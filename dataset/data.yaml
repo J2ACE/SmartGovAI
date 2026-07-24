@@ -1,0 +1,15 @@
+# SmartGovAI Municipal Civic Issue Dataset Configuration
+path: ./dataset
+train: images/train
+val: images/val
+test: images/test
+
+# Classes taxonomy
+names:
+  0: POTHOLE
+  1: GARBAGE_DUMP
+  2: WATER_LEAKAGE
+  3: BROKEN_STREETLIGHT
+  4: OPEN_MANHOLE
+
+nc: 5
