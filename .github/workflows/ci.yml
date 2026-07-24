@@ -1,0 +1,33 @@
+name: SmartGovAI Enterprise CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  quality-gates:
+    name: Code Quality & Build Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Gate 1 - TypeScript Compilation Check (Web Admin)
+        run: npm run build:admin
+
+      - name: Gate 2 - Security Secret Scan
+        uses: trufflesecurity/trufflehog-main@main
+        with:
+          extra_args: --debug --only-verified

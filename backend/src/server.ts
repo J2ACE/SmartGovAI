@@ -6,6 +6,8 @@ import { env } from './config/env';
 import authRoutes from './routes/authRoutes';
 import mediaRoutes from './routes/mediaRoutes';
 import complaintRoutes from './routes/complaintRoutes';
+import spatialRoutes from './routes/spatialRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 import { errorHandler } from './middlewares/errorMiddleware';
 
 const app: Application = express();
@@ -42,6 +44,8 @@ app.get('/health/ready', (req: Request, res: Response) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/media', mediaRoutes);
 app.use('/api/v1/complaints', complaintRoutes);
+app.use('/api/v1/spatial', spatialRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
