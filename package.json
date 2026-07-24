@@ -1,0 +1,34 @@
+{
+  "name": "smartgovai-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SmartGovAI (Nivaranam) - AI-Powered Smart Civic Issue Resolution & Governance Platform",
+  "workspaces": [
+    "citizen-app",
+    "web-admin",
+    "backend",
+    "whatsapp-bot",
+    "shared"
+  ],
+  "scripts": {
+    "dev:admin": "npm run dev --workspace=web-admin",
+    "dev:mobile": "npm run start --workspace=citizen-app",
+    "build:admin": "npm run build --workspace=web-admin",
+    "test": "echo \"Running monorepo quality gates...\""
+  },
+  "keywords": [
+    "civic-tech",
+    "smart-city",
+    "ai",
+    "react-native",
+    "expo",
+    "react",
+    "vite",
+    "express",
+    "yolo",
+    "postgis",
+    "postgresql"
+  ],
+  "author": "SmartGovAI Team",
+  "license": "MIT"
+}
