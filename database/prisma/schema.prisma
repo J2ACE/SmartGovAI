@@ -1,0 +1,239 @@
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+enum Role {
+  CITIZEN
+  DEPARTMENT_HEAD
+  DIVISION_ADMIN
+  SUPER_ADMIN
+}
+
+enum ComplaintStatus {
+  SUBMITTED
+  AI_PROCESSING
+  VERIFIED
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  RESOLVED
+  CITIZEN_FEEDBACK
+  CLOSED
+  REJECTED
+  ARCHIVED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+}
+
+enum SubmissionSource {
+  MOBILE_APP
+  WHATSAPP_BOT
+  WEB_PORTAL
+}
+
+model User {
+  id            String          @id @default(uuid())
+  phoneNumber   String?         @unique
+  email         String?         @unique
+  passwordHash  String?
+  fullName      String
+  role          Role            @default(CITIZEN)
+  cityId        String?
+  divisionId    String?
+  departmentId  String?
+  avatarUrl     String?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  city          City?           @relation(fields: [cityId], references: [id])
+  division      Division?       @relation(fields: [divisionId], references: [id])
+  department    Department?     @relation(fields: [departmentId], references: [id])
+  complaints    Complaint[]     @relation("CitizenComplaints")
+  assignedTasks Complaint[]     @relation("OfficerAssignments")
+  upvotes       Upvote[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@index([role])
+  @@index([phoneNumber])
+  @@index([email])
+}
+
+model City {
+  id          String      @id @default(uuid())
+  name        String      @unique // e.g., "Mumbai", "Delhi", "Bengaluru"
+  state       String
+  divisions   Division[]
+  users       User[]
+  createdAt   DateTime    @default(now())
+}
+
+model Division {
+  id          String      @id @default(uuid())
+  name        String      // e.g., "North Division", "Zone 4"
+  cityId      String
+  city        City        @relation(fields: [cityId], references: [id])
+  users       User[]
+  complaints  Complaint[]
+  contractors Contractor[]
+  createdAt   DateTime    @default(now())
+
+  @@unique([name, cityId])
+}
+
+model Department {
+  id          String      @id @default(uuid())
+  name        String      @unique // e.g., "Roads & Infrastructure", "Water Supply"
+  code        String      @unique // e.g., "ROADS", "WATER", "SANITATION", "POWER"
+  description String?
+  users       User[]
+  complaints  Complaint[]
+  createdAt   DateTime    @default(now())
+}
+
+model Complaint {
+  id                String          @id @default(uuid())
+  trackingId        String          @unique // e.g., "NIV-2026-98412"
+  citizenId         String
+  assignedOfficerId String?
+  departmentId      String?
+  divisionId        String?
+  contractorId      String?
+  title             String
+  description       String
+  category          String          // e.g., "POTHOLE", "GARBAGE_DUMP", "WATER_LEAK"
+  status            ComplaintStatus @default(SUBMITTED)
+  priority          Priority        @default(MEDIUM)
+  source            SubmissionSource@default(MOBILE_APP)
+  
+  // Spatial Fields
+  latitude          Float
+  longitude         Float
+  address           String
+  landmark          String?
+  
+  // AI Metrics
+  aiConfidence      Float           @default(0.0)
+  aiDetectedCategory String?
+  aiIsDuplicate     Boolean         @default(false)
+  duplicateOfId     String?
+  
+  // Social & Resolution Tracking
+  upvoteCount       Int             @default(0)
+  resolvedAt        DateTime?
+  resolutionProofUrl String?
+  resolutionComment String?
+  rating            Int?            // Citizen rating (1 to 5)
+  feedbackComment   String?
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  citizen           User            @relation("CitizenComplaints", fields: [citizenId], references: [id])
+  assignedOfficer   User?           @relation("OfficerAssignments", fields: [assignedOfficerId], references: [id])
+  department        Department?     @relation(fields: [departmentId], references: [id])
+  division          Division?       @relation(fields: [divisionId], references: [id])
+  contractor        Contractor?     @relation(fields: [contractorId], references: [id])
+  duplicateOf       Complaint?      @relation("DuplicateLink", fields: [duplicateOfId], references: [id])
+  duplicates        Complaint[]     @relation("DuplicateLink")
+  media             ComplaintMedia[]
+  statusHistory     StatusHistory[]
+  upvotes           Upvote[]
+
+  @@index([latitude, longitude])
+  @@index([status])
+  @@index([category])
+  @@index([divisionId])
+  @@index([departmentId])
+  @@index([trackingId])
+}
+
+model ComplaintMedia {
+  id          String    @id @default(uuid())
+  complaintId String
+  s3Key       String
+  publicUrl   String
+  mediaType   String    @default("IMAGE") // IMAGE, VIDEO
+  fileSizeBytes Int
+  mimeType    String
+  createdAt   DateTime  @default(now())
+
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+}
+
+model StatusHistory {
+  id          String          @id @default(uuid())
+  complaintId String
+  status      ComplaintStatus
+  comment     String?
+  changedById String
+  createdAt   DateTime        @default(now())
+
+  complaint   Complaint       @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+}
+
+model Upvote {
+  id          String    @id @default(uuid())
+  complaintId String
+  userId      String
+  createdAt   DateTime  @default(now())
+
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([complaintId, userId])
+}
+
+model Contractor {
+  id            String      @id @default(uuid())
+  name          String
+  agencyName    String
+  contactNumber String
+  email         String
+  divisionId    String
+  rating        Float       @default(5.0)
+  activeTasks   Int         @default(0)
+  completedTasks Int        @default(0)
+  createdAt     DateTime    @default(now())
+
+  division      Division    @relation(fields: [divisionId], references: [id])
+  complaints    Complaint[]
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  type      String   // "STATUS_CHANGE", "EMERGENCY_ALERT", "ASSIGNMENT"
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String   // e.g. "USER_LOGIN", "COMPLAINT_STATUS_UPDATE", "ALERT_DISPATCH"
+  ipAddress String?
+  userAgent String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
