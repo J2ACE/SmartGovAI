@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import authRoutes from './routes/authRoutes';
+import mediaRoutes from './routes/mediaRoutes';
+import complaintRoutes from './routes/complaintRoutes';
 import { errorHandler } from './middlewares/errorMiddleware';
 
 const app: Application = express();
@@ -21,8 +23,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate Limiter
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: { success: false, error: 'Too many requests, please try again later.' },
 });
 app.use('/api/', limiter);
@@ -38,6 +40,8 @@ app.get('/health/ready', (req: Request, res: Response) => {
 
 // API Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/media', mediaRoutes);
+app.use('/api/v1/complaints', complaintRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
@@ -45,7 +49,7 @@ app.use(errorHandler);
 const PORT = env.PORT;
 app.listen(PORT, () => {
   console.log(`🚀 [SmartGovAI Backend Gateway] running on port ${PORT} in ${env.NODE_ENV} mode.`);
-  console.log(`🔗 API Documentation: http://localhost:${PORT}/api/v1/docs`);
+  console.log(`🔗 Health Check: http://localhost:${PORT}/health/live`);
 });
 
 export default app;
