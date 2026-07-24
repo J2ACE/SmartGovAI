@@ -1,0 +1,46 @@
+{
+  "common": {
+    "appName": "রিপোর্ট অ্যাপ",
+    "submit": "জমা দিন",
+    "cancel": "বাতিল করুন",
+    "close": "বন্ধ করুন",
+    "ok": "ঠিক আছে",
+    "yes": "হ্যাঁ",
+    "no": "না",
+    "save": "সংরক্ষণ করুন",
+    "delete": "মুছে ফেলুন",
+    "edit": "সম্পাদনা করুন",
+    "loading": "লোড হচ্ছে...",
+    "retry": "আবার চেষ্টা করুন",
+    "search": "খোঁজ করুন",
+    "filter": "ফিল্টার",
+    "share": "শেয়ার করুন"
+  },
+  "tabs": {
+    "home": "হোম",
+    "complaints": "অভিযোগ",
+    "nearby": "কাছাকাছি",
+    "notifications": "বিজ্ঞপ্তি",
+    "profile": "প্রোফাইল"
+  },
+  "nearby": {
+    "nearbyIssues": "কাছাকাছি সমস্যা",
+    "mapView": "ম্যাপ ভিউ",
+    "listView": "তালিকা দেখুন",
+    "distance": "দূরত্ব",
+    "away": "দূরে",
+    "noNearbyIssues": "কাছাকাছি কোন সমস্যা নেই",
+    "loadingMap": "ম্যাপ লোড হচ্ছে...",
+    "myLocation": "আমার অবস্থান",
+    "issueLocation": "সমস্যার অবস্থান",
+    "viewOnMap": "ম্যাপে দেখুন"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी (Hindi)",
+    "mr": "मराठी (Marathi)",
+    "ta": "தமிழ் (Tamil)",
+    "te": "తెలుగు (Telugu)",
+    "bn": "বাংলা (Bengali)"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "common": {
+    "appName": "రిపోర్ట్ యాప్",
+    "submit": "సమర్పించండి",
+    "cancel": "రద్దు చేయండి",
+    "close": "మూసివేయండి",
+    "ok": "సరే",
+    "yes": "అవును",
+    "no": "కాదు",
+    "save": "సేవ్ చేయండి",
+    "delete": "తొలగించు",
+    "edit": "సవరించు",
+    "loading": "లోడ్ అవుతోంది...",
+    "retry": "మళ్లీ ప్రయత్నించండి",
+    "search": "వెతకండి",
+    "filter": "ఫిల్టర్",
+    "share": "భాగస్వామ్యం"
+  },
+  "tabs": {
+    "home": "హోమ్",
+    "complaints": "ఫిర్యాదులు",
+    "nearby": "సమీపంలో",
+    "notifications": "నోటిఫికేషన్లు",
+    "profile": "ప్రొఫైల్"
+  },
+  "nearby": {
+    "nearbyIssues": "సమీపంలోని సమస్యలు",
+    "mapView": "మ్యాప్ వ్యూ",
+    "listView": "జాబితా వీక్షణ",
+    "distance": "దూరం",
+    "away": "దూరంలో",
+    "noNearbyIssues": "సమీపంలో సమస్యలు లేవు",
+    "loadingMap": "మ్యాప్ లోడ్ అవుతోంది...",
+    "myLocation": "నా స్థానం",
+    "issueLocation": "సమస్య స్థానం",
+    "viewOnMap": "మ్యాప్‌లో చూడండి"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी (Hindi)",
+    "mr": "मराठी (Marathi)",
+    "ta": "தமிழ் (Tamil)",
+    "te": "తెలుగు (Telugu)",
+    "bn": "বাংলা (Bengali)"
+  }
+}

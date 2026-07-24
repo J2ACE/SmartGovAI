@@ -1,0 +1,46 @@
+{
+  "common": {
+    "appName": "அறிக்கை செயலி",
+    "submit": "சமர்ப்பிக்கவும்",
+    "cancel": "ரத்துசெய்",
+    "close": "மூடு",
+    "ok": "சரி",
+    "yes": "ஆம்",
+    "no": "இல்லை",
+    "save": "சேமி",
+    "delete": "அழி",
+    "edit": "தொகு",
+    "loading": "ஏற்றுகிறது...",
+    "retry": "மீண்டும் முயற்சிக்கவும்",
+    "search": "தேடு",
+    "filter": "வடிகட்டி",
+    "share": "பகிர்"
+  },
+  "tabs": {
+    "home": "முகப்பு",
+    "complaints": "புகார்கள்",
+    "nearby": "அருகில்",
+    "notifications": "அறிவிப்புகள்",
+    "profile": "சுயவிவரம்"
+  },
+  "nearby": {
+    "nearbyIssues": "அருகிலுள்ள சிக்கல்கள்",
+    "mapView": "வரைபடக் காட்சி",
+    "listView": "பட்டியல் காட்சி",
+    "distance": "தூரம்",
+    "away": "தொலைவில்",
+    "noNearbyIssues": "அருகில் எந்த சிக்கல்களும் இல்லை",
+    "loadingMap": "வரைபடம் ஏற்றப்படுகிறது...",
+    "myLocation": "எனது இடம்",
+    "issueLocation": "சிக்கலின் இடம்",
+    "viewOnMap": "வரைபடத்தில் காண்க"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "हिंदी (Hindi)",
+    "mr": "मराठी (Marathi)",
+    "ta": "தமிழ் (Tamil)",
+    "te": "తెలుగు (Telugu)",
+    "bn": "বাংলা (Bengali)"
+  }
+}
