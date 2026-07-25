@@ -26,3 +26,35 @@ export const broadcastEmergencyAlert = async (req: AuthenticatedRequest, res: Re
     },
   });
 };
+
+export const getMyNotifications = async (req: Request, res: Response) => {
+  return res.status(200).json({
+    success: true,
+    data: [
+      {
+        id: 'NOTIF-001',
+        title: 'Water Supply Maintenance',
+        message: 'Scheduled pipeline repair in North Division from 10 AM to 4 PM.',
+        type: 'EMERGENCY_ALERT',
+        read: false,
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+      },
+      {
+        id: 'NOTIF-002',
+        title: 'Road Work Started',
+        message: 'Contractor has commenced work on pothole complaint NIV-2026-89412.',
+        type: 'STATUS_UPDATE',
+        read: true,
+        createdAt: new Date(Date.now() - 86400000).toISOString(),
+      },
+      {
+        id: 'NOTIF-003',
+        title: 'Civic Reward Points Earned',
+        message: 'You earned 10 civic reward points for reporting a verified issue.',
+        type: 'REWARD',
+        read: true,
+        createdAt: new Date(Date.now() - 172800000).toISOString(),
+      },
+    ],
+  });
+};
