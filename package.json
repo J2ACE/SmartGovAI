@@ -11,8 +11,10 @@
     "shared"
   ],
   "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
     "dev:admin": "npm run dev --workspace=web-admin",
     "dev:mobile": "npm run start --workspace=citizen-app",
+    "dev:bot": "npm run dev --workspace=whatsapp-bot",
     "build:admin": "npm run build --workspace=web-admin",
     "test": "echo \"Running monorepo quality gates...\""
   },
