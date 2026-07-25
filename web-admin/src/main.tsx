@@ -4,16 +4,16 @@ import { APIProvider } from "@vis.gl/react-google-maps";
 import App from "./App.tsx";
 import "./index.css";
 
-const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
-
-if (!apiKey) {
-  console.warn("VITE_GOOGLE_MAPS_API_KEY is not set in .env");
-}
+const apiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || "";
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <APIProvider apiKey={apiKey} libraries={['visualization']}>
+    {apiKey ? (
+      <APIProvider apiKey={apiKey} libraries={['visualization']}>
+        <App />
+      </APIProvider>
+    ) : (
       <App />
-    </APIProvider>
+    )}
   </React.StrictMode>
 );
