@@ -2,11 +2,13 @@
   "name": "@smartgovai/database",
   "version": "1.0.0",
   "private": true,
-  "description": "SmartGovAI PostgreSQL PostGIS Database & Prisma Schemas",
+  "description": "SmartGovAI Database Schemas (PostgreSQL PostGIS & Local SQLite Dev)",
   "scripts": {
     "db:push": "prisma db push",
+    "db:push:sqlite": "prisma db push --schema=prisma/schema.sqlite.prisma",
     "db:seed": "prisma db seed",
-    "studio": "prisma studio"
+    "studio": "prisma studio",
+    "studio:sqlite": "prisma studio --schema=prisma/schema.sqlite.prisma"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
