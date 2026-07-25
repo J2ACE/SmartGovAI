@@ -13,20 +13,27 @@ import { errorHandler } from './middlewares/errorMiddleware';
 const app: Application = express();
 
 // Security & Core Middlewares
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
+// Allow dynamic origins for physical mobile phones on Wi-Fi
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: true,
     credentials: true,
   })
 );
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate Limiter
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200,
   message: { success: false, error: 'Too many requests, please try again later.' },
 });
 app.use('/api/', limiter);
@@ -50,9 +57,11 @@ app.use('/api/v1/notifications', notificationRoutes);
 // Global Error Handler
 app.use(errorHandler);
 
-const PORT = env.PORT;
-app.listen(PORT, () => {
-  console.log(`🚀 [SmartGovAI Backend Gateway] running on port ${PORT} in ${env.NODE_ENV} mode.`);
+const PORT = Number(env.PORT) || 5000;
+
+// Explicitly bind to '0.0.0.0' so physical phones on local Wi-Fi can connect
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 [SmartGovAI Backend Gateway] listening on 0.0.0.0:${PORT} in ${env.NODE_ENV} mode.`);
   console.log(`🔗 Health Check: http://localhost:${PORT}/health/live`);
 });
 
