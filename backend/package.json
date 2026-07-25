@@ -5,8 +5,8 @@
   "description": "SmartGovAI Express TypeScript Backend API Gateway",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon --watch src --exec ts-node src/server.ts",
-    "build": "tsc",
+    "dev": "npx nodemon --watch src --exec npx ts-node src/server.ts",
+    "build": "npx tsc",
     "start": "node dist/server.js",
     "test": "echo \"Backend test suite running...\""
   },
