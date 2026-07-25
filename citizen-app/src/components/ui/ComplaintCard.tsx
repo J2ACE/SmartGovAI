@@ -19,10 +19,12 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
   showDistance,
   distance,
 }) => {
-  const statusConfig = STATUS_CONFIG[complaint.status];
+  const statusKey = (complaint?.status?.toLowerCase() || 'submitted') as keyof typeof STATUS_CONFIG;
+  const statusConfig = STATUS_CONFIG[statusKey] || STATUS_CONFIG['submitted'];
   const categoryInfo = ISSUE_CATEGORIES.find(c => c.value === complaint.category);
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'Recent';
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -38,6 +40,13 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
     if (meters < 1000) return `${Math.round(meters)}m away`;
     return `${(meters / 1000).toFixed(1)}km away`;
   };
+
+  const locationText =
+    complaint?.address ||
+    complaint?.landmark ||
+    (complaint as any)?.location?.area ||
+    (complaint as any)?.location?.address ||
+    'Municipal Ward Area';
 
   return (
     <TouchableOpacity style={[styles.card, style]} onPress={onPress} activeOpacity={0.7}>
@@ -67,7 +76,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
 
         <Text style={styles.location} numberOfLines={1}>
           <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
-          {' '}{complaint.location.area || complaint.location.address || 'Unknown location'}
+          {' '}{locationText}
         </Text>
 
         {complaint.description && (
@@ -80,11 +89,11 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
           <View style={styles.statsRow}>
             <View style={styles.stat}>
               <Ionicons name="people-outline" size={14} color={Colors.textSecondary} />
-              <Text style={styles.statText}>{complaint.supporterCount}</Text>
+              <Text style={styles.statText}>{complaint.supporterCount || 1}</Text>
             </View>
             <View style={styles.stat}>
               <Ionicons name="arrow-up-outline" size={14} color={Colors.textSecondary} />
-              <Text style={styles.statText}>{complaint.upvotes}</Text>
+              <Text style={styles.statText}>{complaint.upvotes || 0}</Text>
             </View>
           </View>
 
@@ -92,7 +101,7 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
             <Text style={styles.distance}>{formatDistance(distance)}</Text>
           )}
 
-          <Text style={styles.complaintId}>#{complaint.id.slice(-6)}</Text>
+          <Text style={styles.complaintId}>#{String(complaint.id || '').slice(-6)}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -108,14 +117,16 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     position: 'relative',
+    height: 160,
+    width: '100%',
   },
   image: {
     width: '100%',
-    height: 150,
-    backgroundColor: Colors.background,
+    height: '100%',
   },
   placeholderImage: {
-    justifyContent: 'center',
+    backgroundColor: Colors.backgroundSecondary,
+    justify: 'center',
     alignItems: 'center',
   },
   statusBadge: {
@@ -123,11 +134,11 @@ const styles = StyleSheet.create({
     top: Spacing.sm,
     right: Spacing.sm,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    paddingVertical: 4,
     borderRadius: BorderRadius.full,
   },
   statusText: {
-    fontSize: FontSizes.xs,
+    fontSize: FontSizes.caption,
     fontWeight: '600',
   },
   content: {
@@ -137,61 +148,65 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
   categoryIcon: {
-    fontSize: FontSizes.lg,
-    marginRight: Spacing.xs,
+    fontSize: 16,
   },
   category: {
-    fontSize: FontSizes.md,
+    fontSize: FontSizes.bodyBold,
     fontWeight: '600',
     color: Colors.text,
   },
   date: {
-    fontSize: FontSizes.xs,
-    color: Colors.textSecondary,
+    fontSize: FontSizes.caption,
+    color: Colors.textLight,
   },
   location: {
-    fontSize: FontSizes.sm,
+    fontSize: FontSizes.bodySmall,
     color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   description: {
-    fontSize: FontSizes.sm,
+    fontSize: FontSizes.bodySmall,
     color: Colors.textSecondary,
-    lineHeight: 20,
     marginBottom: Spacing.sm,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: Spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
   },
   statsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.md,
   },
   stat: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: 4,
   },
   statText: {
-    fontSize: FontSizes.sm,
+    fontSize: FontSizes.caption,
     color: Colors.textSecondary,
   },
   distance: {
-    fontSize: FontSizes.xs,
+    fontSize: FontSizes.caption,
     color: Colors.primary,
     fontWeight: '500',
   },
   complaintId: {
-    fontSize: FontSizes.xs,
+    fontSize: FontSizes.caption,
     color: Colors.textLight,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });
