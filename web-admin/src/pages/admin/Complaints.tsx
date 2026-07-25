@@ -10,13 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { StatusBadge, PriorityBadge } from '@/components/admin/StatusBadge';
-import { mockComplaints, divisions, complaintStatuses, priorities, categories } from '@/lib/mockData';
+import { mockComplaints, complaintStatuses, priorities, categories } from '@/lib/mockData';
 import { adminApi } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -41,32 +36,39 @@ export default function Complaints() {
     adminApi.getComplaints().then((data) => {
       if (Array.isArray(data) && data.length > 0) {
         const formatted = data.map((item: any) => ({
-          id: item.trackingId || item.id,
-          title: item.title,
-          category: item.category,
+          id: item.trackingId || item.id || `CMP-${Math.random()}`,
+          title: item.title || 'Civic Issue Report',
+          category: item.category || 'General',
           status: item.status === 'SUBMITTED' ? 'Submitted' : item.status === 'IN_PROGRESS' ? 'In Progress' : 'Resolved',
           priority: item.priority === 'HIGH' ? 'High' : item.priority === 'EMERGENCY' ? 'Emergency' : 'Medium',
-          division: item.divisionId || 'North',
-          address: item.address,
-          citizenName: 'Citizen',
+          division: item.divisionId || item.division || 'North',
+          address: item.address || 'Municipal Ward Area',
+          citizenName: item.citizenName || 'Citizen User',
           createdAt: item.createdAt?.split('T')[0] || '2026-07-24',
           assignedTo: item.assignedOfficerId || 'Unassigned',
           upvotes: item.upvoteCount || 0,
         }));
         setComplaintsList(formatted);
       }
+    }).catch((err) => {
+      console.warn("Failed loading live complaints, using mock dataset:", err);
     });
   }, []);
+
+  const safeLower = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    return String(val).toLowerCase();
+  };
 
   const divisionComplaints = useMemo(() => {
     if (!adminDivision) return complaintsList;
     return complaintsList.filter(complaint => 
-      complaint.division.toLowerCase() === adminDivision.toLowerCase()
+      safeLower(complaint?.division) === safeLower(adminDivision)
     );
   }, [adminDivision, complaintsList]);
 
   const filterByDateRange = (dateStr: string) => {
-    if (dateRange === 'all') return true;
+    if (dateRange === 'all' || !dateStr) return true;
     
     const complaintDate = new Date(dateStr);
     const now = new Date();
@@ -85,21 +87,35 @@ export default function Complaints() {
   };
 
   const filteredComplaints = useMemo(() => {
+    const q = safeLower(searchQuery);
+
     return divisionComplaints.filter((complaint) => {
+      if (!complaint) return false;
+
+      const titleStr = safeLower(complaint.title);
+      const idStr = safeLower(complaint.id);
+      const addrStr = safeLower(complaint.address);
+      const citizenStr = safeLower(complaint.citizenName);
+
       const matchesSearch =
-        complaint.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        complaint.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        complaint.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        complaint.citizenName.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        titleStr.includes(q) ||
+        idStr.includes(q) ||
+        addrStr.includes(q) ||
+        citizenStr.includes(q);
 
       const matchesDivision =
-        divisionFilter === 'all' || complaint.division.toLowerCase() === divisionFilter.toLowerCase();
+        divisionFilter === 'all' || safeLower(complaint.division) === safeLower(divisionFilter);
+
       const matchesStatus =
-        statusFilter === 'all' || complaint.status.toLowerCase().replace(' ', '-') === statusFilter.toLowerCase();
+        statusFilter === 'all' || safeLower(complaint.status).replace(/\s+/g, '-') === safeLower(statusFilter);
+
       const matchesPriority =
-        priorityFilter === 'all' || complaint.priority.toLowerCase() === priorityFilter.toLowerCase();
+        priorityFilter === 'all' || safeLower(complaint.priority) === safeLower(priorityFilter);
+
       const matchesCategory =
-        categoryFilter === 'all' || complaint.category.toLowerCase().replace(' ', '-') === categoryFilter.toLowerCase();
+        categoryFilter === 'all' || safeLower(complaint.category).replace(/\s+/g, '-') === safeLower(categoryFilter);
+
       const matchesDate = filterByDateRange(complaint.createdAt);
 
       return (
@@ -112,26 +128,6 @@ export default function Complaints() {
       );
     });
   }, [divisionComplaints, searchQuery, divisionFilter, statusFilter, priorityFilter, categoryFilter, dateRange]);
-
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (divisionFilter !== 'all') count++;
-    if (statusFilter !== 'all') count++;
-    if (priorityFilter !== 'all') count++;
-    if (categoryFilter !== 'all') count++;
-    if (dateRange !== 'all') count++;
-    return count;
-  }, [divisionFilter, statusFilter, priorityFilter, categoryFilter, dateRange]);
-
-  const clearAllFilters = () => {
-    setDivisionFilter('all');
-    setStatusFilter('all');
-    setPriorityFilter('all');
-    setCategoryFilter('all');
-    setDateRange('all');
-    setSearchQuery('');
-    toast.info('All filters reset');
-  };
 
   return (
     <div className="space-y-6">
