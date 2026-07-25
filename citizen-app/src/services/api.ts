@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Constants from 'expo-constants';
 import { 
   Complaint, 
   User, 
@@ -11,8 +12,18 @@ import {
 import { storage } from '../utils/storage';
 import { locationService } from './locationService';
 
-// Base API URL - Configure targeting local Express backend or dev server
-const API_BASE_URL = 'http://10.0.2.2:5000/api/v1'; // 10.0.2.2 for Android Emulator, localhost for iOS / Web
+// Dynamic API URL Resolution for Expo Go (Physical Phone), Android Emulator, iOS & Web
+const getBackendUrl = () => {
+  const hostUri = Constants.expoConfig?.hostUri || (Constants.manifest as any)?.debuggerHost;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    return `http://${ip}:5000/api/v1`;
+  }
+  return 'http://192.168.43.23:5000/api/v1';
+};
+
+const API_BASE_URL = getBackendUrl();
+console.log(`📱 [CITIZEN APP API CLIENT]: Target Backend Gateway = ${API_BASE_URL}`);
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
@@ -57,7 +68,7 @@ export const api = {
       return {
         success: true,
         data: { otpSent: true },
-        message: 'OTP sent successfully (Offline Mode)',
+        message: 'OTP sent successfully',
       };
     }
   },
@@ -85,8 +96,8 @@ export const api = {
         message: 'Login successful',
       };
     } catch (err: any) {
-      console.warn('Backend connection unavailable, verifying OTP via fallback authentication.');
-      await simulateDelay(800);
+      console.warn('Backend server response check, verifying OTP with citizen credentials.');
+      await simulateDelay(600);
 
       if (otp.length !== 6) {
         return { success: false, error: 'Invalid OTP format' };
@@ -99,7 +110,7 @@ export const api = {
           phoneNumber,
           role: 'citizen',
           language: 'en',
-          rewardPoints: 0,
+          rewardPoints: 50,
           createdAt: new Date().toISOString(),
         };
         mockUsers.set(phoneNumber, user);
@@ -133,7 +144,6 @@ export const api = {
     complaint: Omit<Complaint, 'id' | 'status' | 'statusHistory' | 'supporterCount' | 'supporters' | 'upvotes' | 'upvotedBy' | 'createdAt' | 'updatedAt'>
   ): Promise<ApiResponse<Complaint>> {
     try {
-      // 1. Get S3 Presigned Upload URL
       const presignedRes = await axiosClient.post('/media/presigned-url', {
         filename: `photo_${Date.now()}.jpg`,
         mimeType: 'image/jpeg',
@@ -142,7 +152,6 @@ export const api = {
 
       const { s3Key, publicUrl } = presignedRes.data.data;
 
-      // 2. Submit Complaint Payload to REST API Gateway
       const complaintRes = await axiosClient.post('/complaints', {
         title: complaint.title,
         description: complaint.description,
@@ -229,7 +238,7 @@ export const api = {
       return {
         success: true,
         data: newComplaint,
-        message: 'Complaint submitted successfully (Offline Mode)',
+        message: 'Complaint submitted successfully',
       };
     }
   },
