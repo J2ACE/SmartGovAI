@@ -12,10 +12,21 @@ import { errorHandler } from './middlewares/errorMiddleware';
 
 const app: Application = express();
 
-// Security & Core Middlewares
+// Security & Core Middlewares (HSTS, CSP, X-Frame-Options, No-Sniff)
 app.use(
   helmet({
     crossOriginResourcePolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "*"],
+      },
+    },
+    referrerPolicy: { policy: 'no-referrer' },
   })
 );
 
@@ -62,7 +73,7 @@ const PORT = Number(env.PORT) || 5000;
 // Explicitly bind to '0.0.0.0' so physical phones on local Wi-Fi can connect
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 [SmartGovAI Backend Gateway] listening on 0.0.0.0:${PORT} in ${env.NODE_ENV} mode.`);
-  console.log(`🔗 Health Check: http://localhost:${PORT}/health/live`);
+  console.log(`🔒 [SECURITY]: Enforced Helmet CSP/HSTS & Rate Limiter policies.`);
 });
 
 export default app;
