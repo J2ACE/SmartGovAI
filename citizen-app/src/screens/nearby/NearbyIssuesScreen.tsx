@@ -10,7 +10,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { Marker, Region, UrlTile } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -24,17 +24,29 @@ const { width, height } = Dimensions.get('window');
 const ASPECT_RATIO = width / height;
 const LATITUDE_DELTA = 0.02;
 const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
-const NEARBY_RADIUS = 5000; // 5km
+const NEARBY_RADIUS = 5000;
 const IS_WEB = Platform.OS === 'web';
+
+const DEFAULT_LOCATION: Location = {
+  latitude: 28.6139,
+  longitude: 77.2090,
+  address: 'Connaught Place, New Delhi',
+};
 
 export default function NearbyIssuesScreen() {
   const { t } = useTranslation();
   const { complaints } = useComplaints();
   const [loading, setLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<Location | null>(null);
+  const [userLocation, setUserLocation] = useState<Location | null>(DEFAULT_LOCATION);
   const [nearbyComplaints, setNearbyComplaints] = useState<Complaint[]>([]);
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
-  const [region, setRegion] = useState<Region | null>(null);
+  const [region, setRegion] = useState<Region>({
+    latitude: DEFAULT_LOCATION.latitude,
+    longitude: DEFAULT_LOCATION.longitude,
+    latitudeDelta: LATITUDE_DELTA,
+    longitudeDelta: LONGITUDE_DELTA,
+  });
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const mapRef = React.useRef<MapView>(null);
 
   useFocusEffect(
@@ -46,242 +58,123 @@ export default function NearbyIssuesScreen() {
   const loadNearbyIssues = async () => {
     setLoading(true);
     try {
-      const hasPermission = await locationService.requestPermissions();
-      if (!hasPermission) {
-        Alert.alert(
-          t('errors.locationPermission'),
-          'Location permission is required to show nearby issues'
-        );
-        setLoading(false);
-        return;
-      }
+      const loc = await locationService.getCurrentLocation();
+      const currentLoc = loc || DEFAULT_LOCATION;
+      setUserLocation(currentLoc);
 
-      const location = await locationService.getCurrentLocation();
-      setUserLocation(location);
+      const newRegion = {
+        latitude: currentLoc.latitude,
+        longitude: currentLoc.longitude,
+        latitudeDelta: LATITUDE_DELTA,
+        longitudeDelta: LONGITUDE_DELTA,
+      };
+      setRegion(newRegion);
 
-      // Filter complaints within radius
-      const nearby = complaints.filter((complaint: Complaint) => {
-        if (!location) return false;
-        const distance = locationService.calculateDistance(
-          location.latitude,
-          location.longitude,
-          complaint.location.latitude,
-          complaint.location.longitude
+      // Filter complaints within 5km radius
+      const nearby = complaints.filter((c) => {
+        if (!c.latitude || !c.longitude) return false;
+        const dist = locationService.calculateDistance(
+          currentLoc.latitude,
+          currentLoc.longitude,
+          c.latitude,
+          c.longitude
         );
-        return distance <= NEARBY_RADIUS;
+        return dist <= NEARBY_RADIUS;
       });
 
-      setNearbyComplaints(nearby);
-
-      // Set map region
-      if (location) {
-        setRegion({
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: LATITUDE_DELTA,
-          longitudeDelta: LONGITUDE_DELTA,
-        });
-      }
-    } catch (error) {
-      console.error('Error loading nearby issues:', error);
-      Alert.alert('Error', 'Failed to load nearby issues');
+      setNearbyComplaints(nearby.length > 0 ? nearby : complaints);
+    } catch (err) {
+      console.warn('Error loading nearby issues:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMarkerPress = (complaint: Complaint) => {
-    setSelectedComplaint(complaint);
-    mapRef.current?.animateToRegion(
-      {
-        latitude: complaint.location.latitude,
-        longitude: complaint.location.longitude,
-        latitudeDelta: LATITUDE_DELTA / 2,
-        longitudeDelta: LONGITUDE_DELTA / 2,
-      },
-      300
-    );
+  const getCategoryIcon = (category: string) => {
+    const found = ISSUE_CATEGORIES.find((cat) => cat.value === category);
+    return found?.icon || '📋';
   };
-
-  const handleComplaintPress = (complaint: Complaint) => {
-    // Navigate to complaint detail
-    // router.push({ pathname: '/(tabs)/complaints/[id]', params: { id: complaint.id } });
-  };
-
-  const centerOnUser = () => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          latitudeDelta: LATITUDE_DELTA,
-          longitudeDelta: LONGITUDE_DELTA,
-        },
-        300
-      );
-    }
-  };
-
-  const getMarkerColor = (category: string) => {
-    const categoryInfo = ISSUE_CATEGORIES.find((c: any) => c.value === category);
-    return categoryInfo ? '#FF6B35' : '#1976D2';
-  };
-
-  const renderComplaintItem = ({ item }: { item: Complaint }) => {
-    const distance = userLocation
-      ? locationService.calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          item.location.latitude,
-          item.location.longitude
-        )
-      : 0;
-
-    return (
-      <View style={styles.complaintItem}>
-        <ComplaintCard complaint={item} onPress={() => handleComplaintPress(item)} />
-        <View style={styles.distanceContainer}>
-          <Ionicons name="location" size={16} color={Colors.primary} />
-          <Text style={styles.distanceText}>
-            {distance < 1000
-              ? `${Math.round(distance)}m ${t('nearby.away')}`
-              : `${(distance / 1000).toFixed(1)}km ${t('nearby.away')}`}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.viewOnMapButton}
-          onPress={() => handleMarkerPress(item)}
-        >
-          <Ionicons name="map" size={16} color={Colors.primary} />
-          <Text style={styles.viewOnMapText}>{t('nearby.viewOnMap')}</Text>
-        </TouchableOpacity>
-
-        {/* Small Map Preview */}
-        <View style={styles.smallMapContainer}>
-          {IS_WEB ? (
-            <View style={styles.webMapPlaceholder}>
-              <Ionicons name="map-outline" size={32} color={Colors.textLight} />
-              <Text style={styles.webMapSubtext}>Map preview on mobile</Text>
-            </View>
-          ) : (
-            <MapView
-              style={styles.smallMap}
-              initialRegion={{
-                latitude: item.location.latitude,
-                longitude: item.location.longitude,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              }}
-              scrollEnabled={false}
-              zoomEnabled={false}
-              rotateEnabled={false}
-              pitchEnabled={false}
-              provider={PROVIDER_GOOGLE}
-            >
-              <Marker
-                coordinate={{
-                  latitude: item.location.latitude,
-                  longitude: item.location.longitude,
-                }}
-                pinColor={getMarkerColor(item.category)}
-              />
-            </MapView>
-          )}
-        </View>
-      </View>
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>{t('nearby.loadingMap')}</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
-      {/* Map View */}
-      <View style={styles.mapContainer}>
-        {IS_WEB ? (
-          <View style={styles.webMapPlaceholder}>
-            <Ionicons name="map" size={64} color={Colors.textLight} />
-            <Text style={styles.webMapText}>
-              Map view is available on mobile devices
-            </Text>
-            <Text style={styles.webMapSubtext}>
-              {nearbyComplaints.length} nearby issues
-            </Text>
-          </View>
-        ) : (
-          region && (
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              initialRegion={region}
-              provider={PROVIDER_GOOGLE}
-              showsUserLocation
-              showsMyLocationButton={false}
-            >
-              {nearbyComplaints.map((complaint) => (
-                <Marker
-                  key={complaint.id}
-                  coordinate={{
-                    latitude: complaint.location.latitude,
-                    longitude: complaint.location.longitude,
-                  }}
-                  pinColor={getMarkerColor(complaint.category)}
-                  onPress={() => handleMarkerPress(complaint)}
-                  title={ISSUE_CATEGORIES.find((c: any) => c.value === complaint.category)?.label}
-                  description={complaint.description}
-                />
-              ))}
-            </MapView>
-          )
-        )}
-
-        {!IS_WEB && (
-          <>
-            {/* Center on User Button */}
-            <TouchableOpacity style={styles.centerButton} onPress={centerOnUser}>
-              <Ionicons name="locate" size={24} color={Colors.primary} />
-            </TouchableOpacity>
-
-            {/* Issue Count Badge */}
-            <View style={styles.countBadge}>
-              <Ionicons name="location" size={20} color={Colors.textInverse} />
-              <Text style={styles.countText}>{nearbyComplaints.length}</Text>
-            </View>
-          </>
-        )}
-      </View>
-
-      {/* Issues List */}
-      <View style={styles.listContainer}>
-        <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>{t('nearby.nearbyIssues')}</Text>
-          <TouchableOpacity onPress={loadNearbyIssues}>
-            <Ionicons name="refresh" size={24} color={Colors.primary} />
+      {/* Header Bar */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Nearby Civic Issues</Text>
+        <View style={styles.toggleGroup}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
+            onPress={() => setViewMode('map')}
+          >
+            <Ionicons name="map" size={16} color={viewMode === 'map' ? Colors.white : Colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+            onPress={() => setViewMode('list')}
+          >
+            <Ionicons name="list" size={16} color={viewMode === 'list' ? Colors.white : Colors.textSecondary} />
           </TouchableOpacity>
         </View>
-
-        {nearbyComplaints.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="location-outline" size={64} color={Colors.textLight} />
-            <Text style={styles.emptyTitle}>{t('nearby.noNearbyIssues')}</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={nearbyComplaints}
-            keyExtractor={(item) => item.id}
-            renderItem={renderComplaintItem}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
       </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Fetching 5km nearby issue markers...</Text>
+        </View>
+      ) : viewMode === 'map' && !IS_WEB ? (
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={region}
+            showsUserLocation
+            showsMyLocationButton
+          >
+            <UrlTile
+              urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maximumZ={19}
+            />
+            {nearbyComplaints.map((item) => (
+              <Marker
+                key={item.id}
+                coordinate={{
+                  latitude: item.latitude || region.latitude,
+                  longitude: item.longitude || region.longitude,
+                }}
+                title={item.title}
+                description={item.address}
+                onPress={() => setSelectedComplaint(item)}
+              >
+                <View style={styles.markerContainer}>
+                  <Text style={styles.markerIcon}>{getCategoryIcon(item.category)}</Text>
+                </View>
+              </Marker>
+            ))}
+          </MapView>
+
+          {selectedComplaint && (
+            <View style={styles.selectedCardOverlay}>
+              <ComplaintCard
+                complaint={selectedComplaint}
+                onPress={() => setSelectedComplaint(null)}
+              />
+            </View>
+          )}
+        </View>
+      ) : (
+        <FlatList
+          data={nearbyComplaints}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          renderItem={({ item }) => (
+            <ComplaintCard
+              complaint={item}
+              style={{ marginBottom: Spacing.md }}
+              onPress={() => setSelectedComplaint(item)}
+            />
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -291,144 +184,71 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Platform.OS === 'ios' ? 50 : Spacing.md,
+    paddingBottom: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  headerTitle: {
+    fontSize: FontSizes.subtitle,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  toggleGroup: {
+    flexDirection: 'row',
+    backgroundColor: Colors.backgroundSecondary,
+    borderRadius: BorderRadius.md,
+    padding: 2,
+  },
+  toggleBtn: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.sm,
+  },
+  toggleBtnActive: {
+    backgroundColor: Colors.primary,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
   },
   loadingText: {
-    fontSize: FontSizes.md,
+    marginTop: Spacing.sm,
     color: Colors.textSecondary,
-    marginTop: Spacing.md,
   },
   mapContainer: {
-    height: height * 0.4,
+    flex: 1,
     position: 'relative',
   },
   map: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
   },
-  centerButton: {
-    position: 'absolute',
-    top: Spacing.md,
-    right: Spacing.md,
+  markerContainer: {
     backgroundColor: Colors.surface,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 6,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: Colors.primary,
     elevation: 4,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
   },
-  countBadge: {
+  markerIcon: {
+    fontSize: 16,
+  },
+  selectedCardOverlay: {
     position: 'absolute',
-    top: Spacing.md,
+    bottom: Spacing.lg,
     left: Spacing.md,
-    backgroundColor: Colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    elevation: 4,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.25)',
-  },
-  countText: {
-    fontSize: FontSizes.md,
-    fontWeight: '600',
-    color: Colors.textInverse,
-    marginLeft: Spacing.xs,
+    right: Spacing.md,
   },
   listContainer: {
-    flex: 1,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  listTitle: {
-    fontSize: FontSizes.xl,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  listContent: {
-    padding: Spacing.md,
-  },
-  complaintItem: {
-    marginBottom: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    elevation: 2,
-    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.2)',
-  },
-  distanceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-  },
-  distanceText: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    marginLeft: Spacing.xs,
-  },
-  viewOnMapButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-    paddingVertical: Spacing.xs,
-  },
-  viewOnMapText: {
-    fontSize: FontSizes.sm,
-    color: Colors.primary,
-    marginLeft: Spacing.xs,
-    fontWeight: '600',
-  },
-  smallMapContainer: {
-    height: 120,
-    marginTop: Spacing.sm,
-    borderRadius: BorderRadius.sm,
-    overflow: 'hidden',
-  },
-  smallMap: {
-    flex: 1,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: Spacing.xxl * 2,
-  },
-  emptyTitle: {
-    fontSize: FontSizes.xl,
-    fontWeight: '600',
-    color: Colors.textLight,
-    marginTop: Spacing.lg,
-  },
-  webMapPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-  webMapText: {
-    fontSize: FontSizes.lg,
-    fontWeight: '600',
-    color: Colors.text,
-    marginTop: Spacing.md,
-    textAlign: 'center',
-  },
-  webMapSubtext: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
-    textAlign: 'center',
   },
 });

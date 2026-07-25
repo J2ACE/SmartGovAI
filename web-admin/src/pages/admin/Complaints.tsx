@@ -10,8 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { StatusBadge, PriorityBadge } from '@/components/admin/StatusBadge';
-import { mockComplaints, complaintStatuses, priorities, categories } from '@/lib/mockData';
+import { mockComplaints, complaintStatuses, priorities, categories, mockContractors } from '@/lib/mockData';
 import { adminApi } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -24,6 +32,9 @@ export default function Complaints() {
   const [dateRange, setDateRange] = useState<string>('all');
   const [adminDivision, setAdminDivision] = useState<string>('');
   const [complaintsList, setComplaintsList] = useState<any[]>(mockComplaints);
+  const [selectedComplaint, setSelectedComplaint] = useState<any | null>(null);
+  const [selectedContractor, setSelectedContractor] = useState<string>('');
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
 
   useEffect(() => {
     const division = localStorage.getItem('adminDivision');
@@ -129,6 +140,63 @@ export default function Complaints() {
     });
   }, [divisionComplaints, searchQuery, divisionFilter, statusFilter, priorityFilter, categoryFilter, dateRange]);
 
+  const handleExportCSV = () => {
+    if (filteredComplaints.length === 0) {
+      toast.error('No complaints available to export.');
+      return;
+    }
+
+    const headers = ['Tracking ID', 'Title', 'Category', 'Division', 'Status', 'Priority', 'Address', 'Upvotes', 'Created Date'];
+    const csvRows = [
+      headers.join(','),
+      ...filteredComplaints.map(c => [
+        `"${c.id}"`,
+        `"${c.title.replace(/"/g, '""')}"`,
+        `"${c.category}"`,
+        `"${c.division}"`,
+        `"${c.status}"`,
+        `"${c.priority}"`,
+        `"${c.address.replace(/"/g, '""')}"`,
+        c.upvotes,
+        `"${c.createdAt}"`
+      ].join(','))
+    ];
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `SmartGovAI_Complaints_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success('Successfully exported complaints dataset to CSV file!');
+  };
+
+  const handleOpenAssignModal = (complaint: any) => {
+    setSelectedComplaint(complaint);
+    setSelectedContractor(complaint.assignedTo !== 'Unassigned' ? complaint.assignedTo : '');
+    setIsAssignDialogOpen(true);
+  };
+
+  const handleConfirmAssignment = () => {
+    if (!selectedComplaint || !selectedContractor) {
+      toast.error('Please select a contractor agency.');
+      return;
+    }
+
+    setComplaintsList(prev => prev.map(c => {
+      if (c.id === selectedComplaint.id) {
+        return { ...c, assignedTo: selectedContractor, status: 'In Progress' };
+      }
+      return c;
+    }));
+
+    toast.success(`Assigned ${selectedContractor} to complaint ${selectedComplaint.id}! Status updated to In Progress.`);
+    setIsAssignDialogOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -142,8 +210,8 @@ export default function Complaints() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => toast.success('Exporting complaints dataset to CSV...')}>
-            <Download className="w-4 h-4" /> Export Data
+          <Button variant="outline" className="gap-2 border-slate-300 hover:bg-slate-100" onClick={handleExportCSV}>
+            <Download className="w-4 h-4 text-slate-600" /> Export CSV Data
           </Button>
         </div>
       </div>
@@ -216,6 +284,7 @@ export default function Complaints() {
                 <th className="px-4 py-3">Division</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Priority</th>
+                <th className="px-4 py-3">Assigned Agency</th>
                 <th className="px-4 py-3">Upvotes</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
@@ -223,7 +292,7 @@ export default function Complaints() {
             <tbody className="divide-y divide-slate-200">
               {filteredComplaints.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-500 font-normal">
+                  <td colSpan={8} className="text-center py-8 text-slate-500 font-normal">
                     No complaints found matching current filters.
                   </td>
                 </tr>
@@ -242,6 +311,23 @@ export default function Complaints() {
                     <td className="px-4 py-3">
                       <PriorityBadge priority={complaint.priority} />
                     </td>
+                    <td className="px-4 py-3 text-slate-700 font-medium">
+                      {complaint.assignedTo !== 'Unassigned' ? (
+                        <span className="inline-flex items-center gap-1 text-slate-900">
+                          <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                          {complaint.assignedTo}
+                        </span>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 gap-1"
+                          onClick={() => handleOpenAssignModal(complaint)}
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Assign Contractor
+                        </Button>
+                      )}
+                    </td>
                     <td className="px-4 py-3 font-medium text-slate-700">👍 {complaint.upvotes}</td>
                     <td className="px-4 py-3 text-right">
                       <Link to={`/admin/complaints/${complaint.id}`}>
@@ -257,6 +343,43 @@ export default function Complaints() {
           </table>
         </div>
       </div>
+
+      {/* Contractor Assignment Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent className="bg-white max-w-md rounded-xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-900">Assign Repair Contractor</DialogTitle>
+            <DialogDescription className="text-slate-500">
+              Select an authorized municipal contractor agency for complaint <strong className="text-slate-800">{selectedComplaint?.id}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Contractor Agency</label>
+              <Select value={selectedContractor} onValueChange={setSelectedContractor}>
+                <SelectTrigger className="bg-slate-50 border-slate-200">
+                  <SelectValue placeholder="Select contractor agency..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {mockContractors.map((c) => (
+                    <SelectItem key={c.id} value={c.name}>
+                      {c.name} ({c.agencyName}) - ⭐ {c.rating}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleConfirmAssignment} className="bg-blue-600 hover:bg-blue-700 text-white">
+              Confirm Assignment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
