@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ViewStyle, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Complaint, STATUS_CONFIG, ISSUE_CATEGORIES } from '../../types';
 import { Colors, BorderRadius, Spacing, FontSizes, Shadows } from '../../constants/theme';
