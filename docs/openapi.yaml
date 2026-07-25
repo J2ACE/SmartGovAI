@@ -1,0 +1,182 @@
+openapi: 3.0.3
+info:
+  title: SmartGovAI (Nivaranam) Core REST API
+  description: Official OpenAPI 3.0 Specification for SmartGovAI Civic Platform
+  version: 2.2.0
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local Development Gateway
+  - url: https://stage-api.smartgov.ai/api/v1
+    description: Staging Gateway
+
+paths:
+  /auth/login:
+    post:
+      summary: Admin / Official Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emailOrPhone, password]
+              properties:
+                emailOrPhone:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful returning JWT tokens
+        '401':
+          description: Invalid credentials
+
+  /auth/send-otp:
+    post:
+      summary: Request Phone OTP SMS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneNumber]
+              properties:
+                phoneNumber:
+                  type: string
+      responses:
+        '200':
+          description: OTP dispatched
+
+  /auth/verify-otp:
+    post:
+      summary: Verify OTP & Issue Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneNumber, otp]
+              properties:
+                phoneNumber:
+                  type: string
+                otp:
+                  type: string
+      responses:
+        '200':
+          description: Phone verification successful
+
+  /media/presigned-url:
+    post:
+      summary: Generate S3 Presigned Upload URL
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [filename, mimeType]
+              properties:
+                filename:
+                  type: string
+                mimeType:
+                  type: string
+                  enum: [image/jpeg, image/png, image/webp]
+                category:
+                  type: string
+      responses:
+        '200':
+          description: Presigned PUT URL generated
+
+  /complaints:
+    post:
+      summary: Submit Citizen Complaint
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, description, category, latitude, longitude, address, s3Key, publicUrl]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+                address:
+                  type: string
+                s3Key:
+                  type: string
+                publicUrl:
+                  type: string
+      responses:
+        '202':
+          description: Complaint accepted and enqueued
+
+    get:
+      summary: Get User Complaints History
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of complaints
+
+  /spatial/heatmap:
+    get:
+      summary: Get PostGIS Complaint Density GeoJSON Points
+      parameters:
+        - in: query
+          name: divisionId
+          schema:
+            type: string
+        - in: query
+          name: category
+          schema:
+            type: string
+      responses:
+        '200':
+          description: GeoJSON FeatureCollection
+
+  /notifications/broadcast:
+    post:
+      summary: Broadcast Emergency Alert to Citizens
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, message]
+              properties:
+                title:
+                  type: string
+                message:
+                  type: string
+                divisionId:
+                  type: string
+                alertLevel:
+                  type: string
+                  enum: [INFO, WARNING, EMERGENCY]
+      responses:
+        '200':
+          description: Alert broadcasted
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
