@@ -33,18 +33,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="complaints/index"
+        name="my-reports"
         options={{
           title: "My Reports",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="document-text" size={size} color={color} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="complaints/[id]"
-        options={{
-          href: null, // Hide from tab bar
         }}
       />
       <Tabs.Screen
