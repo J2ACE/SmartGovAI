@@ -1,13 +1,11 @@
 """Seed predictable development officer accounts."""
 
-import base64
-import hashlib
-import secrets
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.auth.password import hash_password
 from app.models import Officer
 from app.models.enums import OfficerRole
 from app.seeds.master_seed import DEPARTMENT_NAMES, DIVISION_NAMES, MasterData
@@ -20,23 +18,7 @@ def _slug(value: str) -> str:
     return value.lower().replace(" ", "-")
 
 
-def _hash_seed_password(password: str) -> str:
-    """Return a salted scrypt password hash for development seed accounts.
 
-    TODO(Task 2.5): Replace this seed-local helper with the centralized
-    authentication/password utility once that utility is introduced.
-    """
-    salt = secrets.token_bytes(16)
-    derived_key = hashlib.scrypt(
-        password.encode("utf-8"),
-        salt=salt,
-        n=2**14,
-        r=8,
-        p=1,
-    )
-    encoded_salt = base64.urlsafe_b64encode(salt).decode("ascii")
-    encoded_key = base64.urlsafe_b64encode(derived_key).decode("ascii")
-    return f"scrypt$16384$8$1${encoded_salt}${encoded_key}"
 
 
 def _get_or_create_officer(
@@ -52,13 +34,16 @@ def _get_or_create_officer(
     if officer is None:
         officer = Officer(
             email=email,
-            password_hash=_hash_seed_password(password),
+            password_hash=hash_password(password),
             role=role,
             division_id=division_id,
             department_id=department_id,
             is_active=True,
         )
         session.add(officer)
+    elif not officer.password_hash.startswith("$2"):
+        # Migrate legacy hash format (e.g., scrypt) to bcrypt on next seed run.
+        officer.password_hash = hash_password(password)
     return officer
 
 

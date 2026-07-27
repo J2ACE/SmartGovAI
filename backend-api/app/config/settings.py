@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     seed_officer_password: str | None = None
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
 
+    # JWT
+    jwt_secret: str | None = None
+    jwt_refresh_secret: str | None = None
+    jwt_access_expire_minutes: int = 15
+    jwt_refresh_expire_days: int = 7
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
