@@ -1,0 +1,1 @@
+"""SmartGovAI FastAPI application package."""
