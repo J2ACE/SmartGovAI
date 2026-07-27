@@ -8,8 +8,8 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSizes, BorderRadius, Shadows } from '../../constants/theme';
 import { ComplaintCard, Button } from '../../components/ui';
@@ -18,6 +18,7 @@ import { useComplaints } from '../../contexts/ComplaintContext';
 import { STATUS_CONFIG, ComplaintStatus } from '../../types';
 
 export default function HomeScreen() {
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { complaints, fetchMyComplaints, isLoading } = useComplaints();
   const [refreshing, setRefreshing] = useState(false);
@@ -79,7 +80,7 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             style={styles.notificationButton}
-            onPress={() => router.push('/(tabs)/notifications' as any)}
+            onPress={() => navigation.navigate('Notifications' as any)}
           >
             <Ionicons name="notifications-outline" size={24} color={Colors.text} />
             <View style={styles.notificationBadge}>
@@ -91,7 +92,7 @@ export default function HomeScreen() {
         {/* Quick Report Button */}
         <TouchableOpacity
           style={styles.reportCard}
-          onPress={() => router.push('/(report)/camera' as any)}
+          onPress={() => navigation.navigate('ReportTab' as any)}
           activeOpacity={0.9}
         >
           <View style={styles.reportCardContent}>
@@ -133,7 +134,7 @@ export default function HomeScreen() {
             <Text style={styles.rewardPoints}>{user?.rewardPoints || 0} Points</Text>
             <Text style={styles.rewardText}>Keep reporting to earn more!</Text>
           </View>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('ProfileTab' as any)}>
             <Text style={styles.rewardLink}>Redeem</Text>
           </TouchableOpacity>
         </View>
@@ -164,7 +165,7 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Reports</Text>
             {recentComplaints.length > 0 && (
-              <TouchableOpacity onPress={() => router.push('/(tabs)/complaints' as any)}>
+              <TouchableOpacity onPress={() => navigation.navigate('ComplaintsTab' as any)}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             )}
@@ -176,10 +177,7 @@ export default function HomeScreen() {
                 key={complaint.id}
                 complaint={complaint}
                 onPress={() =>
-                  router.push({
-                    pathname: '/(tabs)/complaints/[id]' as any,
-                    params: { id: complaint.id },
-                  })
+                  navigation.navigate('ComplaintDetail' as any, { id: complaint.id })
                 }
                 style={styles.complaintCard}
               />

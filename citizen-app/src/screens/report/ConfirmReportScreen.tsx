@@ -7,8 +7,8 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSizes, BorderRadius, Shadows } from '../../constants/theme';
 import { Button } from '../../components/ui';
@@ -28,7 +28,9 @@ interface ReportParams {
 }
 
 export default function ConfirmReportScreen() {
-  const params = useLocalSearchParams() as any;
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params || {}) as any;
   const { createComplaint } = useComplaints();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -55,12 +57,9 @@ export default function ConfirmReportScreen() {
     });
 
     if (result.success) {
-      router.replace({
-        pathname: '/(report)/success' as any,
-        params: {
-          mode: 'new',
-          complaintId: result.complaint?.id || '',
-        },
+      navigation.replace('Success' as any, {
+        mode: 'new',
+        complaintId: result.complaint?.id || '',
       });
     } else {
       Alert.alert(
@@ -187,7 +186,7 @@ export default function ConfirmReportScreen() {
       <View style={styles.bottomActions}>
         <Button
           title="Edit Report"
-          onPress={() => router.back()}
+          onPress={() => navigation.goBack()}
           variant="outline"
           style={{ flex: 1 }}
         />

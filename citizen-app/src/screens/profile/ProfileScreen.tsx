@@ -9,8 +9,8 @@ import {
   Switch,
   Modal,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, FontSizes, BorderRadius, Shadows } from '../../constants/theme';
@@ -27,6 +27,7 @@ const LANGUAGES = [
 ];
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
   const { user, logout, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -35,6 +36,7 @@ export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
 
   const handleSave = async () => {
     await updateUser({ name, email });
@@ -59,7 +61,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             await logout();
-            router.replace('/login' as any);
+            navigation.replace('Auth' as any);
           },
         },
       ]
@@ -73,19 +75,19 @@ export default function ProfileScreen() {
       icon: 'document-text-outline',
       title: 'My Complaints',
       subtitle: 'View all your reported issues',
-      onPress: () => router.push('/(tabs)/complaints' as any),
+      onPress: () => navigation.navigate('Complaints' as any),
     },
     {
       icon: 'star-outline',
       title: 'Reward Points',
-      subtitle: `${user?.rewardPoints || 0} points earned`,
-      onPress: () => Alert.alert('Coming Soon', 'Rewards redemption coming soon!'),
+      subtitle: `${user?.rewardPoints || 50} points earned`,
+      onPress: () => setShowRewardsModal(true),
     },
     {
       icon: 'notifications-outline',
       title: 'Notifications',
       subtitle: 'Manage notification preferences',
-      onPress: () => router.push('/(tabs)/notifications' as any),
+      onPress: () => navigation.navigate('Notifications' as any),
     },
     {
       icon: 'language-outline',
@@ -97,7 +99,7 @@ export default function ProfileScreen() {
       icon: 'help-circle-outline',
       title: 'Help & Support',
       subtitle: 'FAQs and contact support',
-      onPress: () => Alert.alert('Help', 'Contact us at support@reportapp.com'),
+      onPress: () => Alert.alert('Help', 'Contact us at support@smartgovai.gov.in'),
     },
     {
       icon: 'shield-checkmark-outline',
@@ -109,7 +111,7 @@ export default function ProfileScreen() {
       icon: 'information-circle-outline',
       title: 'About',
       subtitle: 'Version 1.0.0',
-      onPress: () => Alert.alert('About', 'ReportApp v1.0.0\nMaking cities better, one report at a time.'),
+      onPress: () => Alert.alert('About', 'SmartGovAI Nivaran v1.0.0\nAI-Powered Smart Civic Issue Reporting & Resolution System.'),
     },
   ];
 

@@ -11,9 +11,9 @@ import {
   Dimensions,
   Share,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Colors, Spacing, FontSizes, BorderRadius, Shadows } from '../../constants/theme';
 import { Button, StatusTimeline } from '../../components/ui';
@@ -25,13 +25,21 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ComplaintDetailScreen() {
   const { t } = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
+  const params = (route.params || {}) as { id?: string };
+  const id = params.id;
   const { user } = useAuth();
-  const { fetchComplaintById, upvoteComplaint, submitFeedback } = useComplaints();
+  const { fetchComplaintById, upvoteComplaint, submitFeedback, deleteComplaint } = useComplaints();
   const [complaint, setComplaint] = useState<Complaint | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpvoting, setIsUpvoting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+
+  const currentUserId = user?.id || 'current-citizen';
+  const hasUpvoted = Boolean(complaint?.upvotedBy?.includes(currentUserId));
 
   useEffect(() => {
     loadComplaint();
@@ -45,25 +53,63 @@ export default function ComplaintDetailScreen() {
     setIsLoading(false);
   };
 
+  const handleDelete = () => {
+    if (!complaint) return;
+
+    Alert.alert(
+      'Delete Complaint',
+      'Are you sure you want to delete this complaint? It will be removed from your account and database.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            const success = await deleteComplaint(complaint.id);
+            setIsDeleting(false);
+            if (success) {
+              Alert.alert('Deleted', 'Complaint deleted successfully.', [
+                { text: 'OK', onPress: () => navigation.goBack() },
+              ]);
+            } else {
+              Alert.alert('Error', 'Failed to delete complaint. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleUpvote = async () => {
-    if (!complaint || !user) return;
+    if (!complaint) return;
     
-    // Check if user has already upvoted
-    if (complaint.upvotedBy?.includes(user.id)) {
-      Alert.alert(t('complaints.upvoted'), 'You have already upvoted this complaint');
+    if (hasUpvoted) {
+      Alert.alert('Already Upvoted', 'You have already upvoted this complaint.');
       return;
     }
 
     setIsUpvoting(true);
     const success = await upvoteComplaint(complaint.id);
+    setIsUpvoting(false);
+
     if (success) {
+      const updatedUpvotes = (complaint.upvotes || 0) + 1;
+      const updatedUpvotedBy = [...(complaint.upvotedBy || []), currentUserId];
       setComplaint({ 
         ...complaint, 
-        upvotes: complaint.upvotes + 1,
-        upvotedBy: [...(complaint.upvotedBy || []), user.id]
+        upvotes: updatedUpvotes,
+        upvotedBy: updatedUpvotedBy,
+        supporterCount: updatedUpvotes,
       });
+
+      Alert.alert(
+        '👍 Upvoted Successfully!',
+        `Your vote for complaint #${complaint.id.slice(0, 8).toUpperCase()} has been registered. Total votes: ${updatedUpvotes}`
+      );
+    } else {
+      Alert.alert('Error', 'Failed to upvote complaint. Please try again.');
     }
-    setIsUpvoting(false);
   };
 
   const handleShare = async () => {
@@ -89,36 +135,20 @@ export default function ComplaintDetailScreen() {
 
   const handleFeedback = async (satisfied: boolean) => {
     if (!complaint) return;
-    
-    Alert.prompt(
-      satisfied ? 'Great!' : 'Sorry to hear that',
-      satisfied
-        ? 'Would you like to leave any additional comments?'
-        : 'Please tell us what went wrong',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Submit',
-          onPress: async (comment?: string) => {
-            const success = await submitFeedback(
-              complaint.id,
-              satisfied,
-              comment || undefined,
-              satisfied ? 5 : 1
-            );
-            if (success) {
-              setComplaint({
-                ...complaint,
-                feedback: { satisfied, comment },
-                status: 'closed',
-              });
-              Alert.alert('Thank you!', 'Your feedback has been submitted.');
-            }
-          },
-        },
-      ],
-      'plain-text'
+    const success = await submitFeedback(
+      complaint.id,
+      satisfied,
+      satisfied ? 'Satisfied with resolution' : 'Needs attention',
+      satisfied ? 5 : 1
     );
+    if (success) {
+      setComplaint({
+        ...complaint,
+        feedback: { satisfied, comment: satisfied ? 'Satisfied with resolution' : 'Needs attention' },
+        status: 'closed',
+      });
+      Alert.alert('Thank you!', 'Your feedback has been submitted.');
+    }
   };
 
   if (isLoading) {
@@ -138,29 +168,46 @@ export default function ComplaintDetailScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={64} color={Colors.error} />
           <Text style={styles.errorText}>Complaint not found</Text>
-          <Button title="Go Back" onPress={() => router.back()} variant="outline" />
+          <Button title="Go Back" onPress={() => navigation.goBack()} variant="outline" />
         </View>
       </SafeAreaView>
     );
   }
 
-  const statusConfig = STATUS_CONFIG[complaint.status];
+  const statusKey = (complaint.status?.toLowerCase() || 'submitted') as keyof typeof STATUS_CONFIG;
+  const statusConfig = STATUS_CONFIG[statusKey] || STATUS_CONFIG['submitted'];
   const categoryInfo = ISSUE_CATEGORIES.find((c) => c.value === complaint.category);
-  const severityConfig = complaint.severity ? SEVERITY_CONFIG[complaint.severity] : null;
+  const severityKey = complaint.severity?.toLowerCase() as SeverityLevel;
+  const severityConfig = severityKey && SEVERITY_CONFIG[severityKey] ? SEVERITY_CONFIG[severityKey] : null;
   const isResolved = complaint.status === 'resolved';
   const isClosed = complaint.status === 'closed';
+
+  const afterImages = complaint.afterImages || [];
+  const galleryImages = [complaint.imageUri, ...afterImages].filter(Boolean);
+  const locationAddress = complaint.location?.address || complaint.location?.area || (complaint as any)?.address || (complaint as any)?.landmark || 'Municipal Ward Area';
+  const locationCity = complaint.location?.city || '';
+  const locationSubtext = [complaint.location?.area, locationCity, complaint.location?.pincode].filter(Boolean).join(', ');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Complaint Details</Text>
-        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-          <Ionicons name="share-outline" size={24} color={Colors.text} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.xs }}>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+            <Ionicons name="share-outline" size={22} color={Colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shareButton} onPress={handleDelete} disabled={isDeleting}>
+            {isDeleting ? (
+              <ActivityIndicator size="small" color={Colors.error} />
+            ) : (
+              <Ionicons name="trash-outline" size={22} color={Colors.error} />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -171,10 +218,10 @@ export default function ComplaintDetailScreen() {
           showsHorizontalScrollIndicator={false}
           style={styles.imageGallery}
         >
-          {[complaint.imageUri, ...complaint.afterImages].map((uri, index) => (
+          {galleryImages.map((uri, index) => (
             <View key={index} style={styles.imageContainer}>
               <Image source={{ uri }} style={styles.image} />
-              {index === 0 && complaint.afterImages.length > 0 && (
+              {index === 0 && afterImages.length > 0 && (
                 <View style={styles.imageBadge}>
                   <Text style={styles.imageBadgeText}>Before</Text>
                 </View>
@@ -194,7 +241,7 @@ export default function ComplaintDetailScreen() {
             <Text style={[styles.statusLabel, { color: statusConfig.color }]}>
               {statusConfig.label}
             </Text>
-            <Text style={styles.complaintId}>#{complaint.id.slice(-6)}</Text>
+            <Text style={styles.complaintId}>#{complaint.id ? complaint.id.slice(-6) : '000000'}</Text>
           </View>
         </View>
 
@@ -203,8 +250,8 @@ export default function ComplaintDetailScreen() {
           {/* Category & Severity */}
           <View style={styles.categoryRow}>
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryIcon}>{categoryInfo?.icon}</Text>
-              <Text style={styles.categoryText}>{categoryInfo?.label}</Text>
+              <Text style={styles.categoryIcon}>{categoryInfo?.icon || '📋'}</Text>
+              <Text style={styles.categoryText}>{categoryInfo?.label || 'Civic Issue'}</Text>
             </View>
             {severityConfig && (
               <View style={[styles.severityBadge, { backgroundColor: severityConfig.color + '20' }]}>
@@ -228,17 +275,11 @@ export default function ComplaintDetailScreen() {
             <Text style={styles.sectionTitle}>Location</Text>
             <View style={styles.locationRow}>
               <Ionicons name="location" size={18} color={Colors.primary} />
-              <Text style={styles.locationText}>
-                {complaint.location.address || complaint.location.area || 'Location captured'}
-              </Text>
+              <Text style={styles.locationText}>{locationAddress}</Text>
             </View>
-            {complaint.location.city && (
-              <Text style={styles.locationSubtext}>
-                {[complaint.location.area, complaint.location.city, complaint.location.pincode]
-                  .filter(Boolean)
-                  .join(', ')}
-              </Text>
-            )}
+            {locationSubtext ? (
+              <Text style={styles.locationSubtext}>{locationSubtext}</Text>
+            ) : null}
           </View>
 
           {/* Stats */}
@@ -253,7 +294,7 @@ export default function ComplaintDetailScreen() {
                 size={24} 
                 color={complaint.upvotedBy?.includes(user?.id || '') ? Colors.success : Colors.primary} 
               />
-              <Text style={styles.statValue}>{complaint.upvotes}</Text>
+              <Text style={styles.statValue}>{complaint.upvotes || 0}</Text>
               <Text style={styles.statLabel}>
                 {complaint.upvotedBy?.includes(user?.id || '') ? t('complaints.upvoted') : t('complaints.upvote')}
               </Text>
@@ -261,7 +302,7 @@ export default function ComplaintDetailScreen() {
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Ionicons name="people" size={24} color={Colors.secondary} />
-              <Text style={styles.statValue}>{complaint.supporterCount}</Text>
+              <Text style={styles.statValue}>{complaint.supporterCount || 1}</Text>
               <Text style={styles.statLabel}>Supporters</Text>
             </View>
             <View style={styles.statDivider} />
@@ -269,8 +310,8 @@ export default function ComplaintDetailScreen() {
               <Ionicons name="time" size={24} color={Colors.warning} />
               <Text style={styles.statValue}>
                 {Math.ceil(
-                  (Date.now() - new Date(complaint.createdAt).getTime()) / (1000 * 60 * 60 * 24)
-                )}
+                  (Date.now() - new Date(complaint.createdAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24)
+                ) || 1}
               </Text>
               <Text style={styles.statLabel}>Days</Text>
             </View>
@@ -280,7 +321,7 @@ export default function ComplaintDetailScreen() {
         {/* Status Timeline */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Status Timeline</Text>
-          <StatusTimeline statusHistory={complaint.statusHistory} />
+          <StatusTimeline statusHistory={complaint.statusHistory || []} />
         </View>
 
         {/* Worker Notes */}
@@ -342,14 +383,35 @@ export default function ComplaintDetailScreen() {
 
       {/* Bottom Action */}
       {!isClosed && (
-        <View style={styles.bottomAction}>
-          <Button
-            title="Upvote This Issue"
+        <View style={[styles.bottomAction, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <TouchableOpacity
+            style={[
+              styles.primaryActionButton,
+              hasUpvoted && { backgroundColor: Colors.success },
+              (isUpvoting || hasUpvoted) && { opacity: 0.9 },
+            ]}
             onPress={handleUpvote}
-            loading={isUpvoting}
-            fullWidth
-            icon={<Ionicons name="arrow-up" size={18} color="white" />}
-          />
+            disabled={isUpvoting || hasUpvoted}
+            activeOpacity={0.8}
+          >
+            {isUpvoting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : hasUpvoted ? (
+              <View style={styles.buttonRow}>
+                <Ionicons name="checkmark-circle" size={20} color="white" />
+                <Text style={styles.primaryActionButtonText}>
+                  ✓ Upvoted ({complaint?.upvotes || 1})
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.buttonRow}>
+                <Ionicons name="arrow-up" size={20} color="white" />
+                <Text style={styles.primaryActionButtonText}>
+                  Upvote This Issue ({complaint?.upvotes || 0})
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
       )}
     </SafeAreaView>
@@ -624,15 +686,36 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     fontStyle: 'italic',
   },
+  primaryActionButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.medium,
+  },
+  primaryActionButtonText: {
+    color: 'white',
+    fontSize: FontSizes.md,
+    fontWeight: '700',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
   bottomAction: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+    zIndex: 9999,
+    elevation: 10,
     ...Shadows.medium,
   },
 });

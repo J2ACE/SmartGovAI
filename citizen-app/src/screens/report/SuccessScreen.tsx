@@ -6,15 +6,16 @@ import {
   Animated,
   Share,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSizes, BorderRadius, Shadows } from '../../constants/theme';
 import { Button } from '../../components/ui';
-import * as Haptics from 'expo-haptics';
 
 export default function SuccessScreen() {
-  const params = useLocalSearchParams<{ mode: string; complaintId: string }>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params || {}) as { mode?: string; complaintId?: string };
   const isSupport = params.mode === 'support';
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -22,9 +23,6 @@ export default function SuccessScreen() {
   const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    // Trigger haptic feedback
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
     // Animate the success icon
     Animated.sequence([
       Animated.timing(scaleAnim, {
@@ -69,14 +67,11 @@ export default function SuccessScreen() {
   };
 
   const handleViewStatus = () => {
-    router.replace({
-      pathname: '/(tabs)/complaints/[id]' as any,
-      params: { id: params.complaintId },
-    });
+    navigation.navigate('ComplaintDetail' as any, { id: params.complaintId });
   };
 
   const handleGoHome = () => {
-    router.replace('/(tabs)' as any);
+    navigation.navigate('MainTabs' as any);
   };
 
   return (

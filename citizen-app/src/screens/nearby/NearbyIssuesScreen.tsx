@@ -11,8 +11,8 @@ import {
   Platform,
 } from 'react-native';
 import MapView, { Marker, Region, UrlTile } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useComplaints } from '../../contexts/ComplaintContext';
 import { locationService } from '../../services/locationService';
@@ -34,6 +34,7 @@ const DEFAULT_LOCATION: Location = {
 };
 
 export default function NearbyIssuesScreen() {
+  const navigation = useNavigation<any>();
   const { t } = useTranslation();
   const { complaints } = useComplaints();
   const [loading, setLoading] = useState(true);
@@ -72,12 +73,14 @@ export default function NearbyIssuesScreen() {
 
       // Filter complaints within 5km radius
       const nearby = complaints.filter((c) => {
-        if (!c.latitude || !c.longitude) return false;
+        const lat = c.location?.latitude;
+        const lng = c.location?.longitude;
+        if (!lat || !lng) return false;
         const dist = locationService.calculateDistance(
           currentLoc.latitude,
           currentLoc.longitude,
-          c.latitude,
-          c.longitude
+          lat,
+          lng
         );
         return dist <= NEARBY_RADIUS;
       });
@@ -105,13 +108,13 @@ export default function NearbyIssuesScreen() {
             style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
             onPress={() => setViewMode('map')}
           >
-            <Ionicons name="map" size={16} color={viewMode === 'map' ? Colors.white : Colors.textSecondary} />
+            <Ionicons name="map" size={16} color={viewMode === 'map' ? '#FFFFFF' : Colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
             onPress={() => setViewMode('list')}
           >
-            <Ionicons name="list" size={16} color={viewMode === 'list' ? Colors.white : Colors.textSecondary} />
+            <Ionicons name="list" size={16} color={viewMode === 'list' ? '#FFFFFF' : Colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -138,11 +141,11 @@ export default function NearbyIssuesScreen() {
               <Marker
                 key={item.id}
                 coordinate={{
-                  latitude: item.latitude || region.latitude,
-                  longitude: item.longitude || region.longitude,
+                  latitude: item.location?.latitude || region.latitude,
+                  longitude: item.location?.longitude || region.longitude,
                 }}
-                title={item.title}
-                description={item.address}
+                title={item.category}
+                description={item.location?.address}
                 onPress={() => setSelectedComplaint(item)}
               >
                 <View style={styles.markerContainer}>
@@ -156,7 +159,7 @@ export default function NearbyIssuesScreen() {
             <View style={styles.selectedCardOverlay}>
               <ComplaintCard
                 complaint={selectedComplaint}
-                onPress={() => setSelectedComplaint(null)}
+                onPress={() => navigation.navigate('ComplaintDetail' as any, { id: selectedComplaint.id })}
               />
             </View>
           )}
@@ -170,7 +173,7 @@ export default function NearbyIssuesScreen() {
             <ComplaintCard
               complaint={item}
               style={{ marginBottom: Spacing.md }}
-              onPress={() => setSelectedComplaint(item)}
+              onPress={() => navigation.navigate('ComplaintDetail' as any, { id: item.id })}
             />
           )}
         />
@@ -196,13 +199,13 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
   },
   headerTitle: {
-    fontSize: FontSizes.subtitle,
+    fontSize: FontSizes.lg,
     fontWeight: '700',
     color: Colors.text,
   },
   toggleGroup: {
     flexDirection: 'row',
-    backgroundColor: Colors.backgroundSecondary,
+    backgroundColor: Colors.background,
     borderRadius: BorderRadius.md,
     padding: 2,
   },

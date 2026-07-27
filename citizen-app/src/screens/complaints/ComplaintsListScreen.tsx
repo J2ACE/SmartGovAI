@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../../constants/theme';
 import { ComplaintCard } from '../../components/ui';
@@ -27,6 +27,7 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
 ];
 
 export default function ComplaintsListScreen() {
+  const navigation = useNavigation<any>();
   const { complaints, isLoading, fetchMyComplaints } = useComplaints();
   const [filter, setFilter] = useState<FilterType>('all');
   const [refreshing, setRefreshing] = useState(false);
@@ -47,10 +48,7 @@ export default function ComplaintsListScreen() {
   });
 
   const handleComplaintPress = (complaintId: string) => {
-    router.push({
-      pathname: '/(tabs)/complaints/[id]' as any,
-      params: { id: complaintId },
-    });
+    navigation.navigate('ComplaintDetail' as any, { id: complaintId });
   };
 
   const renderHeader = () => (
@@ -103,7 +101,7 @@ export default function ComplaintsListScreen() {
       {filter === 'all' && (
         <TouchableOpacity
           style={styles.reportButton}
-          onPress={() => router.push('/(report)/camera' as any)}
+          onPress={() => navigation.navigate('Camera' as any)}
         >
           <Ionicons name="camera" size={20} color="white" />
           <Text style={styles.reportButtonText}>Report Issue</Text>

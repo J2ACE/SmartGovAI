@@ -8,12 +8,13 @@ import {
   Alert,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../../constants/theme';
 import { Button } from '../../components/ui';
 
 export default function CameraScreen() {
+  const navigation = useNavigation<any>();
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [isCapturing, setIsCapturing] = useState(false);
@@ -37,7 +38,7 @@ export default function CameraScreen() {
           </View>
           <Text style={styles.permissionTitle}>Camera Permission</Text>
           <Text style={styles.permissionText}>
-            We need camera access to capture photos of civic issues
+            We need camera access to capture live photos of civic issues
           </Text>
           <Button
             title="Grant Permission"
@@ -47,7 +48,7 @@ export default function CameraScreen() {
           />
           <Button
             title="Go Back"
-            onPress={() => router.back()}
+            onPress={() => navigation.goBack()}
             variant="ghost"
             fullWidth
             style={{ marginTop: Spacing.sm }}
@@ -70,10 +71,7 @@ export default function CameraScreen() {
 
       if (photo?.uri) {
         // Navigate to report form with the captured image
-        router.push({
-          pathname: '/(report)/form' as any,
-          params: { imageUri: photo.uri },
-        });
+        navigation.navigate('ReportForm' as any, { imageUri: photo.uri });
       }
     } catch (error) {
       console.error('Error capturing photo:', error);
@@ -103,7 +101,7 @@ export default function CameraScreen() {
         <View style={styles.topControls}>
           <TouchableOpacity
             style={styles.controlButton}
-            onPress={() => router.back()}
+            onPress={() => navigation.goBack()}
           >
             <Ionicons name="close" size={28} color="white" />
           </TouchableOpacity>
@@ -136,10 +134,8 @@ export default function CameraScreen() {
         {/* Bottom Controls */}
         <View style={styles.bottomControls}>
           <View style={styles.bottomControlsInner}>
-            {/* Gallery Button - Optional */}
-            <TouchableOpacity style={styles.sideButton}>
-              <Ionicons name="images-outline" size={24} color="white" />
-            </TouchableOpacity>
+            {/* Gallery Upload Disabled Per PRD Rule */}
+            <View style={styles.sideButton} />
 
             {/* Capture Button */}
             <TouchableOpacity

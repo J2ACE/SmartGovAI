@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSizes, BorderRadius, Shadows } from '../../constants/theme';
 import { Button, ComplaintCard } from '../../components/ui';
@@ -30,7 +30,9 @@ interface ReportParams {
 }
 
 export default function DuplicateCheckScreen() {
-  const params = useLocalSearchParams() as any;
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = (route.params || {}) as any;
   const { nearbyComplaints, supportExistingComplaint } = useComplaints();
   const [selectedComplaint, setSelectedComplaint] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,12 +52,9 @@ export default function DuplicateCheckScreen() {
     const success = await supportExistingComplaint(selectedComplaint);
 
     if (success) {
-      router.push({
-        pathname: '/(report)/success' as any,
-        params: {
-          mode: 'support',
-          complaintId: selectedComplaint,
-        },
+      navigation.navigate('Success' as any, {
+        mode: 'support',
+        complaintId: selectedComplaint,
       });
     } else {
       Alert.alert('Error', 'Failed to support the complaint. Please try again.');
@@ -65,19 +64,16 @@ export default function DuplicateCheckScreen() {
   };
 
   const handleReportNew = () => {
-    router.push({
-      pathname: '/(report)/confirm' as any,
-      params: {
-        imageUri: params.imageUri,
-        category: params.category,
-        description: params.description,
-        severity: params.severity,
-        latitude: params.latitude,
-        longitude: params.longitude,
-        address: params.address,
-        area: params.area,
-        city: params.city,
-      },
+    navigation.navigate('ConfirmReport' as any, {
+      imageUri: params.imageUri,
+      category: params.category,
+      description: params.description,
+      severity: params.severity,
+      latitude: params.latitude,
+      longitude: params.longitude,
+      address: params.address,
+      area: params.area,
+      city: params.city,
     });
   };
 
@@ -86,7 +82,7 @@ export default function DuplicateCheckScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Similar Issues Found</Text>

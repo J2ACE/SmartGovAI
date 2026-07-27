@@ -22,28 +22,20 @@ const mockComplaintsStore: any[] = [
     id: 'complaint-001',
     trackingId: 'NIV-2026-89412',
     citizenId: 'citizen-9876543210',
-    citizenName: 'Citizen User',
     title: 'Severe Road Pothole near Main Junction',
     description: 'Deep pothole causing vehicle damage and traffic slowdown.',
     category: 'POTHOLE',
     status: 'IN_PROGRESS',
     priority: 'HIGH',
     source: 'MOBILE_APP',
-    latitude: 28.65,
-    longitude: 77.20,
-    address: 'SV Road, Connaught Place, North Division',
-    aiConfidence: 0.96,
+    latitude: 19.076,
+    longitude: 72.8777,
+    address: 'SV Road, Andheri West, Mumbai, Maharashtra',
+    aiConfidence: 0.94,
     upvoteCount: 12,
     departmentId: 'dept-roads-01',
-    departmentName: 'Road Department',
     divisionId: 'division-north-01',
-    divisionName: 'North Division',
     createdAt: new Date().toISOString(),
-    statusHistory: [
-      { status: 'PENDING', timestamp: new Date(Date.now() - 86400000).toISOString(), note: 'Submitted by citizen' },
-      { status: 'APPROVED', timestamp: new Date(Date.now() - 43200000).toISOString(), note: 'Verified by Division Admin' },
-      { status: 'IN_PROGRESS', timestamp: new Date(Date.now() - 3600000).toISOString(), note: 'Assigned to Metro Construction' }
-    ],
     media: [
       {
         id: 'media-001',
@@ -57,26 +49,20 @@ const mockComplaintsStore: any[] = [
     id: 'complaint-002',
     trackingId: 'NIV-2026-89413',
     citizenId: 'citizen-9876543211',
-    citizenName: 'Citizen User',
     title: 'Overflowing Waste Dump on Market Road',
     description: 'Uncollected garbage creating bad odor and unhygienic conditions.',
     category: 'GARBAGE_DUMP',
-    status: 'PENDING',
+    status: 'SUBMITTED',
     priority: 'MEDIUM',
     source: 'MOBILE_APP',
-    latitude: 28.60,
-    longitude: 77.22,
-    address: 'Market Yard, Dadar East, Central Division',
+    latitude: 19.082,
+    longitude: 72.8810,
+    address: 'Market Yard, Dadar East, Mumbai, Maharashtra',
     aiConfidence: 0.88,
     upvoteCount: 5,
     departmentId: 'dept-sanitation-01',
-    departmentName: 'Sanitation Department',
     divisionId: 'division-central-01',
-    divisionName: 'Central Division',
     createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    statusHistory: [
-      { status: 'PENDING', timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), note: 'Submitted by citizen' }
-    ],
     media: [
       {
         id: 'media-002',
@@ -90,47 +76,37 @@ const mockComplaintsStore: any[] = [
 
 export const createComplaint = async (req: AuthenticatedRequest, res: Response) => {
   const { title, description, category, latitude, longitude, address, s3Key, publicUrl } = req.body;
-  const citizenId = req.user?.userId || 'citizen-9876543210';
-  const citizenName = req.user?.fullName || 'Citizen User';
+  const citizenId = req.user?.userId || 'anonymous-citizen';
 
   const trackingId = `NIV-2026-${Math.floor(10000 + Math.random() * 90000)}`;
 
-  // Automated Department & Region Routing Computation
+  // Automated Routing Engine Computation
   const routing = routeComplaintAutomatically(category, latitude, longitude);
 
   const newComplaint = {
     id: `complaint-${Date.now()}`,
     trackingId,
     citizenId,
-    citizenName,
     title,
     description,
     category,
-    status: 'PENDING',
+    status: 'SUBMITTED',
     priority: 'MEDIUM',
     source: 'MOBILE_APP',
     latitude,
     longitude,
     address,
     departmentId: routing.departmentId,
-    departmentName: routing.departmentName,
     divisionId: routing.divisionId,
-    divisionName: routing.divisionName,
-    aiConfidence: 0.94,
+    aiConfidence: 0.92,
     upvoteCount: 1,
     createdAt: new Date().toISOString(),
-    statusHistory: [
-      { status: 'PENDING', timestamp: new Date().toISOString(), note: 'Registered & auto-assigned' }
-    ],
     media: [{ id: `media-${Date.now()}`, s3Key, publicUrl, mediaType: 'IMAGE' }],
   };
 
   mockComplaintsStore.unshift(newComplaint);
 
-  console.log(`📢 [NOTIFY REGIONAL HEAD]: ${routing.divisionName} Head notified of ${trackingId}`);
-  console.log(`📢 [NOTIFY DEPT HEAD]: ${routing.departmentName} Head notified of ${trackingId}`);
-
-  // Enqueue Async Job for AI Inference & Push Notification Dispatch
+  // Enqueue Async Job for AI Inference & Notification Dispatch
   enqueueComplaintJob({
     complaintId: newComplaint.id,
     trackingId,
@@ -142,7 +118,7 @@ export const createComplaint = async (req: AuthenticatedRequest, res: Response) 
 
   return res.status(202).json({
     success: true,
-    message: `Complaint submitted successfully to ${routing.divisionName} (${routing.departmentName}).`,
+    message: 'Complaint submitted successfully and enqueued for AI classification.',
     data: newComplaint,
   });
 };
@@ -172,6 +148,7 @@ export const getComplaintById = async (req: Request, res: Response) => {
 };
 
 export const getNearbyComplaints = async (req: Request, res: Response) => {
+  const { lat, lng, radiusKm } = req.query;
   return res.status(200).json({
     success: true,
     data: mockComplaintsStore,
@@ -188,20 +165,36 @@ export const updateComplaintStatus = async (req: AuthenticatedRequest, res: Resp
   }
 
   complaint.status = status;
-  if (!complaint.statusHistory) complaint.statusHistory = [];
-  complaint.statusHistory.push({
-    status,
-    timestamp: new Date().toISOString(),
-    note: comment || `Status updated to ${status}`
-  });
-
   if (comment) complaint.resolutionComment = comment;
-
-  console.log(`⚡ [REALTIME SYNC]: ${complaint.trackingId} status updated to ${status}`);
 
   return res.status(200).json({
     success: true,
     message: `Complaint status updated to ${status}`,
     data: complaint,
   });
+};
+
+export const deleteComplaint = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const citizenId = req.user?.userId;
+
+  try {
+    const index = mockComplaintsStore.findIndex(
+      (c) => (c.id === id || c.trackingId === id) && (c.citizenId === citizenId || req.user?.role === 'SUPER_ADMIN')
+    );
+
+    if (index !== -1) {
+      mockComplaintsStore.splice(index, 1);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Complaint deleted successfully from database',
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete complaint',
+    });
+  }
 };

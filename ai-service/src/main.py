@@ -41,19 +41,19 @@ async def predict_image(file: UploadFile = File(...)):
     
     # 1. Validate Image Quality
     is_valid, validation_msg = validate_image_quality(contents)
-    if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Image validation failed: {validation_msg}"
-        )
 
-    # 2. Run Inference Pipeline
+    # 2. Run Vision Inference Pipeline
     prediction = predict_civic_issue(contents)
+
+    # If image quality checks failed (e.g. too dark or blurry), adjust confidence
+    confidence = prediction["confidence"]
+    if not is_valid:
+        confidence = min(confidence, 0.55)
 
     return PredictionResponse(
         success=True,
         category=prediction["category"],
-        confidence=prediction["confidence"],
+        confidence=confidence,
         priority=prediction["priority"],
         isDuplicate=prediction["isDuplicate"],
         boundingBoxes=prediction["boundingBoxes"],

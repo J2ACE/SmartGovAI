@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSizes, BorderRadius, Shadows } from '../../constants/theme';
 import { Notification } from '../../types';
@@ -58,6 +58,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
 ];
 
 export default function NotificationsScreen() {
+  const navigation = useNavigation<any>();
   const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -76,10 +77,7 @@ export default function NotificationsScreen() {
 
     // Navigate based on type
     if (notification.complaintId) {
-      router.push({
-        pathname: '/(tabs)/complaints/[id]' as any,
-        params: { id: notification.complaintId },
-      });
+      navigation.navigate('ComplaintDetail' as any, { id: notification.complaintId });
     }
   };
 

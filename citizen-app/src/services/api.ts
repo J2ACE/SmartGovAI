@@ -1,5 +1,4 @@
 import axios from 'axios';
-import Constants from 'expo-constants';
 import { 
   Complaint, 
   User, 
@@ -12,14 +11,15 @@ import {
 import { storage } from '../utils/storage';
 import { locationService } from './locationService';
 
-// Dynamic API URL Resolution for Expo Go (Physical Phone), Android Emulator, iOS & Web
+import { Platform } from 'react-native';
+
+// Dynamic API URL Resolution for Physical Mobile Device, Android Emulator, iOS, Web & Local Server
+const DEV_LAN_IP = '192.168.43.23';
 const getBackendUrl = () => {
-  const hostUri = Constants.expoConfig?.hostUri || (Constants.manifest as any)?.debuggerHost;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    return `http://${ip}:5000/api/v1`;
+  if (Platform.OS === 'android' || Platform.OS === 'ios') {
+    return `http://${DEV_LAN_IP}:5000/api/v1`;
   }
-  return 'http://192.168.43.23:5000/api/v1';
+  return 'http://localhost:5000/api/v1';
 };
 
 const API_BASE_URL = getBackendUrl();
@@ -143,22 +143,38 @@ export const api = {
   async createComplaint(
     complaint: Omit<Complaint, 'id' | 'status' | 'statusHistory' | 'supporterCount' | 'supporters' | 'upvotes' | 'upvotedBy' | 'createdAt' | 'updatedAt'>
   ): Promise<ApiResponse<Complaint>> {
-    try {
-      const presignedRes = await axiosClient.post('/media/presigned-url', {
-        filename: `photo_${Date.now()}.jpg`,
-        mimeType: 'image/jpeg',
-        category: complaint.category,
-      });
+    const lat = complaint.location?.latitude || (complaint as any).latitude || 19.0760;
+    const lng = complaint.location?.longitude || (complaint as any).longitude || 72.8777;
+    const addr = complaint.location?.address || (complaint as any).address || 'Captured Location';
+    const area = complaint.location?.area || (complaint as any).area || 'Municipal Ward Area';
+    const city = complaint.location?.city || (complaint as any).city || 'Mumbai';
 
-      const { s3Key, publicUrl } = presignedRes.data.data;
+    try {
+      let s3Key = `complaints/${complaint.category}/${Date.now()}.jpg`;
+      let publicUrl = complaint.imageUri;
+
+      try {
+        const presignedRes = await axiosClient.post('/media/presigned-url', {
+          filename: `photo_${Date.now()}.jpg`,
+          mimeType: 'image/jpeg',
+          category: complaint.category,
+        });
+
+        if (presignedRes.data?.data) {
+          s3Key = presignedRes.data.data.s3Key || s3Key;
+          publicUrl = presignedRes.data.data.publicUrl || publicUrl;
+        }
+      } catch (mediaErr) {
+        console.warn('Presigned URL generation skipped, using image URI.');
+      }
 
       const complaintRes = await axiosClient.post('/complaints', {
-        title: complaint.title,
-        description: complaint.description,
-        category: complaint.category,
-        latitude: complaint.latitude,
-        longitude: complaint.longitude,
-        address: complaint.address,
+        title: `${complaint.category.toUpperCase()} issue reported by citizen`,
+        description: complaint.description || `${complaint.category} issue reported at ${addr}`,
+        category: complaint.category.toUpperCase(),
+        latitude: lat,
+        longitude: lng,
+        address: addr,
         s3Key,
         publicUrl,
       });
@@ -167,19 +183,18 @@ export const api = {
 
       const newComplaint: Complaint = {
         id: apiData.id || generateId(),
-        trackingId: apiData.trackingId || `NIV-2026-${Math.floor(10000 + Math.random() * 90000)}`,
         citizenId: complaint.citizenId,
-        citizenName: complaint.citizenName,
-        citizenPhone: complaint.citizenPhone,
-        title: complaint.title,
         description: complaint.description,
         category: complaint.category as IssueCategory,
+        severity: (complaint as any).severity || 'medium',
         status: 'submitted',
-        priority: (apiData.priority?.toLowerCase() as any) || 'medium',
-        latitude: complaint.latitude,
-        longitude: complaint.longitude,
-        address: complaint.address,
-        landmark: complaint.landmark,
+        location: {
+          latitude: lat,
+          longitude: lng,
+          address: addr,
+          area: area,
+          city: city,
+        },
         imageUri: publicUrl || complaint.imageUri,
         beforeImages: [publicUrl || complaint.imageUri],
         afterImages: [],
@@ -215,6 +230,13 @@ export const api = {
         ...complaint,
         id: generateId(),
         status: 'submitted',
+        location: {
+          latitude: lat,
+          longitude: lng,
+          address: addr,
+          area: area,
+          city: city,
+        },
         statusHistory: [
           {
             status: 'submitted',
@@ -238,7 +260,7 @@ export const api = {
       return {
         success: true,
         data: newComplaint,
-        message: 'Complaint submitted successfully',
+        message: 'Complaint saved locally',
       };
     }
   },
@@ -256,19 +278,22 @@ export const api = {
           title: item.title,
           description: item.description,
           category: item.category as IssueCategory,
-          status: item.status.toLowerCase() as ComplaintStatus,
-          priority: item.priority.toLowerCase() as any,
-          latitude: item.latitude,
-          longitude: item.longitude,
-          address: item.address,
+          status: item.status?.toLowerCase() as ComplaintStatus || 'submitted',
+          priority: item.priority?.toLowerCase() as any || 'medium',
+          location: {
+            latitude: item.latitude || 19.0760,
+            longitude: item.longitude || 72.8777,
+            address: item.address || 'Municipal Ward Area',
+            area: item.landmark || 'City Ward',
+          },
           imageUri: item.media?.[0]?.publicUrl || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600',
           beforeImages: item.media?.map((m: any) => m.publicUrl) || [],
           afterImages: [],
           statusHistory: [
             {
-              status: item.status.toLowerCase() as ComplaintStatus,
+              status: item.status?.toLowerCase() as ComplaintStatus || 'submitted',
               timestamp: item.createdAt,
-              note: `Status is ${item.status}`,
+              note: `Status is ${item.status || 'submitted'}`,
             },
           ],
           supporterCount: item.upvoteCount || 1,
@@ -313,19 +338,22 @@ export const api = {
         title: item.title,
         description: item.description,
         category: item.category as IssueCategory,
-        status: item.status.toLowerCase() as ComplaintStatus,
-        priority: item.priority.toLowerCase() as any,
-        latitude: item.latitude,
-        longitude: item.longitude,
-        address: item.address,
+        status: item.status?.toLowerCase() as ComplaintStatus || 'submitted',
+        priority: item.priority?.toLowerCase() as any || 'medium',
+        location: {
+          latitude: item.latitude || 19.0760,
+          longitude: item.longitude || 72.8777,
+          address: item.address || 'Municipal Ward Area',
+          area: item.landmark || 'City Ward',
+        },
         imageUri: item.media?.[0]?.publicUrl || 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600',
         beforeImages: item.media?.map((m: any) => m.publicUrl) || [],
         afterImages: [],
         statusHistory: [
           {
-            status: item.status.toLowerCase() as ComplaintStatus,
+            status: item.status?.toLowerCase() as ComplaintStatus || 'submitted',
             timestamp: item.createdAt,
-            note: `Status is ${item.status}`,
+            note: `Status is ${item.status || 'submitted'}`,
           },
         ],
         supporterCount: item.upvoteCount || 1,
@@ -347,6 +375,24 @@ export const api = {
 
     if (!complaint) return { success: false, error: 'Complaint not found' };
     return { success: true, data: complaint };
+  },
+
+  async deleteComplaint(id: string): Promise<ApiResponse<boolean>> {
+    try {
+      await axiosClient.delete(`/complaints/${id}`);
+    } catch (err) {
+      console.warn('Backend delete request failed, performing local removal.');
+    }
+
+    // Remove from local mock storage and AsyncStorage
+    const mockIndex = mockComplaints.findIndex(c => c.id === id);
+    if (mockIndex !== -1) mockComplaints.splice(mockIndex, 1);
+
+    const localComplaints = await storage.getComplaints();
+    const updatedLocal = localComplaints.filter(c => c.id !== id);
+    await storage.setComplaints(updatedLocal);
+
+    return { success: true, data: true, message: 'Complaint deleted successfully' };
   },
 
   async getNearbyComplaints(

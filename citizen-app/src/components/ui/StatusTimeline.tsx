@@ -23,8 +23,9 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({
   return (
     <View style={[styles.container, style]}>
       {statusHistory.map((event, index) => {
-        const statusConfig = STATUS_CONFIG[event.status];
-        const { date, time } = formatDateTime(event.timestamp);
+        const statusKey = (event.status?.toLowerCase() || 'submitted') as keyof typeof STATUS_CONFIG;
+        const statusConfig = STATUS_CONFIG[statusKey] || STATUS_CONFIG['submitted'];
+        const { date, time } = formatDateTime(event.timestamp || new Date().toISOString());
         const isLast = index === statusHistory.length - 1;
         const isFirst = index === 0;
 

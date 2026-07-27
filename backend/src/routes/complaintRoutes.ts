@@ -5,6 +5,7 @@ import {
   getComplaintById,
   getNearbyComplaints,
   updateComplaintStatus,
+  deleteComplaint,
   createComplaintSchema,
 } from '../controllers/complaintController';
 import { validateRequest } from '../middlewares/validateMiddleware';
@@ -18,5 +19,6 @@ router.get('/my', authenticateJwt, getMyComplaints);
 router.get('/nearby', getNearbyComplaints);
 router.get('/:id', getComplaintById);
 router.patch('/:id/status', authenticateJwt, requireRole(['DEPARTMENT_HEAD', 'DIVISION_ADMIN', 'SUPER_ADMIN']), updateComplaintStatus);
+router.delete('/:id', authenticateJwt, deleteComplaint);
 
 export default router;

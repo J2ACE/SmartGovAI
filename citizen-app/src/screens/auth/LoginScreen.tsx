@@ -11,14 +11,15 @@ import {
   Animated,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { StatusBar } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button, Input } from '../../components/ui';
 import { Colors, Spacing, FontSizes, BorderRadius } from '../../constants/theme';
 
 export default function LoginScreen() {
+  const navigation = useNavigation<any>();
   const { requestOTP, login, isLoading } = useAuth();
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -110,7 +111,7 @@ export default function LoginScreen() {
     const result = await login(phoneNumber, otpString);
     
     if (result.success) {
-      router.replace('/(tabs)' as any);
+      // Auth state update in AuthContext automatically redirects via RootNavigator guard
     } else {
       setError(result.error || 'Invalid OTP');
     }
@@ -138,7 +139,7 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar style="dark" />
+      <StatusBar barStyle="dark-content" />
       
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         {/* Logo / Header */}

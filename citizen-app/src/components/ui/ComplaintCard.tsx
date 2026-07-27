@@ -48,16 +48,16 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({
     (complaint as any)?.location?.address ||
     'Municipal Ward Area';
 
+  const cardImageUri =
+    complaint?.imageUri ||
+    complaint?.beforeImages?.[0] ||
+    (complaint as any)?.media?.[0]?.publicUrl ||
+    'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600';
+
   return (
     <TouchableOpacity style={[styles.card, style]} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
-        {complaint.imageUri ? (
-          <Image source={{ uri: complaint.imageUri }} style={styles.image} />
-        ) : (
-          <View style={[styles.image, styles.placeholderImage]}>
-            <Ionicons name="image-outline" size={32} color={Colors.textLight} />
-          </View>
-        )}
+        <Image source={{ uri: cardImageUri }} style={styles.image} />
         <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
           <Text style={[styles.statusText, { color: statusConfig.color }]}>
             {statusConfig.label}

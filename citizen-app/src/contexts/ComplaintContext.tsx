@@ -19,6 +19,7 @@ interface ComplaintContextType {
   supportExistingComplaint: (complaintId: string) => Promise<boolean>;
   upvoteComplaint: (complaintId: string) => Promise<boolean>;
   submitFeedback: (complaintId: string, satisfied: boolean, comment?: string, rating?: number) => Promise<boolean>;
+  deleteComplaint: (complaintId: string) => Promise<boolean>;
   setCurrentComplaint: (complaint: Complaint | null) => void;
   clearNearbyComplaints: () => void;
   syncOffline: () => Promise<void>;
@@ -172,17 +173,44 @@ export const ComplaintProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [user]);
 
   const upvoteComplaint = useCallback(async (complaintId: string): Promise<boolean> => {
-    if (!user) return false;
-
     try {
-      const response = await api.upvoteComplaint(complaintId, user.id);
-      if (response.success) {
-        setComplaints(prev =>
-          prev.map(c => c.id === complaintId ? response.data! : c)
-        );
-        return true;
-      }
-      return false;
+      const currentUserId = user?.id || 'current-citizen';
+      setComplaints(prev =>
+        prev.map(c => {
+          if (c.id === complaintId) {
+            const currentUpvotedBy = c.upvotedBy || [];
+            const isAlreadyInList = currentUpvotedBy.includes(currentUserId);
+            const updatedUpvotedBy = isAlreadyInList ? currentUpvotedBy : [...currentUpvotedBy, currentUserId];
+            const updatedUpvotes = isAlreadyInList ? (c.upvotes || 1) : (c.upvotes || 0) + 1;
+            return {
+              ...c,
+              upvotes: updatedUpvotes,
+              upvotedBy: updatedUpvotedBy,
+              supporterCount: updatedUpvotes,
+            };
+          }
+          return c;
+        })
+      );
+
+      const currentLocal = await storage.getComplaints();
+      const updatedLocal = currentLocal.map(c => {
+        if (c.id === complaintId) {
+          const currentUpvotedBy = c.upvotedBy || [];
+          const isAlreadyInList = currentUpvotedBy.includes(currentUserId);
+          const updatedUpvotedBy = isAlreadyInList ? currentUpvotedBy : [...currentUpvotedBy, currentUserId];
+          const updatedUpvotes = isAlreadyInList ? (c.upvotes || 1) : (c.upvotes || 0) + 1;
+          return {
+            ...c,
+            upvotes: updatedUpvotes,
+            upvotedBy: updatedUpvotedBy,
+            supporterCount: updatedUpvotes,
+          };
+        }
+        return c;
+      });
+      await storage.setComplaints(updatedLocal);
+      return true;
     } catch (err) {
       console.error('Error upvoting complaint:', err);
       return false;
@@ -206,6 +234,20 @@ export const ComplaintProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return false;
     } catch (err) {
       console.error('Error submitting feedback:', err);
+      return false;
+    }
+  }, []);
+
+  const deleteComplaint = useCallback(async (complaintId: string): Promise<boolean> => {
+    try {
+      const response = await api.deleteComplaint(complaintId);
+      if (response.success) {
+        setComplaints(prev => prev.filter(c => c.id !== complaintId));
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error deleting complaint:', err);
       return false;
     }
   }, []);
@@ -240,6 +282,7 @@ export const ComplaintProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         supportExistingComplaint,
         upvoteComplaint,
         submitFeedback,
+        deleteComplaint,
         setCurrentComplaint,
         clearNearbyComplaints,
         syncOffline,
