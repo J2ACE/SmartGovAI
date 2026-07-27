@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum as SqlEnum, Float, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum as SqlEnum, Float, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -24,9 +24,9 @@ class Complaint(Base):
     __tablename__ = "complaints"
 
     tracking_number: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    citizen_id: Mapped[UUID] = mapped_column(ForeignKey("citizens.id"), nullable=False)
-    division_id: Mapped[UUID] = mapped_column(ForeignKey("divisions.id"), nullable=False)
-    department_id: Mapped[UUID | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    citizen_id: Mapped[UUID] = mapped_column(ForeignKey("citizens.id"), index=True, nullable=False)
+    division_id: Mapped[UUID] = mapped_column(ForeignKey("divisions.id"), index=True, nullable=False)
+    department_id: Mapped[UUID | None] = mapped_column(ForeignKey("departments.id"), index=True, nullable=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     user_category: Mapped[ComplaintCategory] = mapped_column(SqlEnum(ComplaintCategory), nullable=False)
@@ -35,7 +35,7 @@ class Complaint(Base):
     ai_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     ai_priority: Mapped[Priority | None] = mapped_column(SqlEnum(Priority), nullable=True)
     final_priority: Mapped[Priority | None] = mapped_column(SqlEnum(Priority), nullable=True)
-    status: Mapped[ComplaintStatus] = mapped_column(SqlEnum(ComplaintStatus), default=ComplaintStatus.SUBMITTED, nullable=False)
+    status: Mapped[ComplaintStatus] = mapped_column(SqlEnum(ComplaintStatus), index=True, default=ComplaintStatus.SUBMITTED, nullable=False)
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -48,3 +48,7 @@ class Complaint(Base):
     status_history: Mapped[list["ComplaintStatusHistory"]] = relationship(back_populates="complaint")
     assignments: Mapped[list["ContractorAssignment"]] = relationship(back_populates="complaint")
     ai_predictions: Mapped[list["AIPrediction"]] = relationship(back_populates="complaint")
+
+    __table_args__ = (
+        Index("ix_complaints_created_at", "created_at"),
+    )
