@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { StatusBadge, PriorityBadge } from '@/components/admin/StatusBadge';
 import { mockComplaints, complaintStatuses, priorities, categories, mockContractors } from '@/lib/mockData';
-import { adminApi } from '@/lib/api';
+import { adminApi } from '@/services/apiClient';
 import { toast } from 'sonner';
 
 export default function Complaints() {
