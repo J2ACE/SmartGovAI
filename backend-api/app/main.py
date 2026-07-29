@@ -2,6 +2,7 @@ from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.router import router as auth_router
+from app.citizen_auth.router import router as citizen_auth_router
 from app.config.settings import settings
 from app.core.logging import configure_logging, get_logger
 
@@ -20,6 +21,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(citizen_auth_router)
 
 
 @app.get("/health", status_code=status.HTTP_200_OK, tags=["health"])

@@ -12,5 +12,20 @@ from app.models.contractor_assignment import ContractorAssignment
 from app.models.department import Department
 from app.models.division import Division
 from app.models.officer import Officer
+from app.models.otp_record import OTPRecord
 
-__all__ = ["AIPrediction", "Base", "Citizen", "City", "Complaint", "ComplaintImage", "ComplaintStatusHistory", "Contractor", "ContractorAssignment", "Department", "Division", "Officer"]
+__all__ = [
+    "AIPrediction",
+    "Base",
+    "Citizen",
+    "City",
+    "Complaint",
+    "ComplaintImage",
+    "ComplaintStatusHistory",
+    "Contractor",
+    "ContractorAssignment",
+    "Department",
+    "Division",
+    "Officer",
+    "OTPRecord",
+]

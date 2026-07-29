@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     jwt_access_expire_minutes: int = 15
     jwt_refresh_expire_days: int = 7
 
+    # OTP
+    otp_provider: str = "development"
+    otp_expire_minutes: int = 5
+    otp_max_attempts: int = 5
+    otp_length: int = 6
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",

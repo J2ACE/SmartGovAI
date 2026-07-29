@@ -40,18 +40,20 @@ def create_access_token(subject: str, role: str) -> str:
     return jwt.encode(payload, cfg.jwt_secret, algorithm="HS256")
 
 
-def create_refresh_token(subject: str) -> str:
+def create_refresh_token(subject: str, role: str | None = None) -> str:
     """Return a signed HS256 refresh token valid for *jwt_refresh_expire_days*."""
     cfg = get_settings()
     if not cfg.jwt_refresh_secret:
         raise RuntimeError("JWT_REFRESH_SECRET must be set to create tokens.")
     expires = _utcnow() + timedelta(days=cfg.jwt_refresh_expire_days)
-    payload = {
+    payload: dict = {
         "sub": subject,
         "type": TokenType.REFRESH,
         "exp": expires,
         "iat": _utcnow(),
     }
+    if role is not None:
+        payload["role"] = role
     return jwt.encode(payload, cfg.jwt_refresh_secret, algorithm="HS256")
 
 
